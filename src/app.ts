@@ -1,6 +1,8 @@
 import express, { Application, Request, Response } from 'express';
 import { pool } from './database/pool';
 import { asyncHandler } from './middlewares/asyncHandler';
+import { notFoundHandler } from './middlewares/notFoundHandler';
+import { errorHandler } from './middlewares/errorHandler';
 
 const app: Application = express();
 
@@ -43,5 +45,21 @@ app.get(
     }
   })
 );
+
+/**
+ * A partir daqui, apenas middlewares de "fim de linha". A ordem é
+ * estrita e não pode ser invertida:
+ *
+ * 1º notFoundHandler — captura qualquer requisição que não bateu com
+ *    NENHUMA rota declarada acima (incluindo rotas que ainda serão
+ *    adicionadas no futuro: elas devem SEMPRE ser registradas antes
+ *    desta linha, nunca depois).
+ *
+ * 2º errorHandler — captura tanto o NotFoundError gerado acima quanto
+ *    qualquer outro erro (`next(error)`) vindo de qualquer rota da
+ *    aplicação. Precisa ser o ÚLTIMO app.use() do arquivo.
+ */
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;

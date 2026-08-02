@@ -16,6 +16,42 @@ interface ErrorResponseBody {
 }
 
 /**
+ * Type guard para o erro específico que o body-parser (usado
+ * internamente por `express.json()`) lança quando o corpo da
+ * requisição não é um JSON sintaticamente válido — por exemplo, uma
+ * vírgula sobrando antes de um `}`, chaves ou colchetes
+ * desbalanceados, aspas não fechadas, etc.
+ *
+ * Por que verificar as TRÊS características juntas, e não apenas
+ * `err instanceof SyntaxError`?
+ *
+ * `SyntaxError` é um erro nativo do JavaScript e pode ser lançado em
+ * qualquer parte da aplicação (ex: um `JSON.parse()` dentro de um
+ * service, por um motivo completamente alheio ao corpo da
+ * requisição HTTP). Se tratássemos qualquer `SyntaxError` como "400,
+ * corpo inválido", estaríamos mascarando bugs reais da aplicação
+ * como se fossem erro do cliente — o que é exatamente o tipo de
+ * problema que a distinção `AppError` vs "erro inesperado" (mais
+ * abaixo) existe para evitar.
+ *
+ * A combinação `instanceof SyntaxError` + `status === 400` +
+ * `'body' in err` é a assinatura específica que o body-parser
+ * atribui SOMENTE aos erros de parsing do corpo da requisição,
+ * distinguindo-os de qualquer outro SyntaxError que possa surgir em
+ * outro lugar do código.
+ */
+function isBodyParserSyntaxError(
+  err: unknown
+): err is SyntaxError & { status: number; body: unknown } {
+  return (
+    err instanceof SyntaxError &&
+    'status' in err &&
+    (err as { status: unknown }).status === 400 &&
+    'body' in err
+  );
+}
+
+/**
  * Error handler global do Express.
  *
  * Por que a função precisa ter exatamente 4 parâmetros?
@@ -52,6 +88,27 @@ export function errorHandler(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _next: NextFunction
 ): void {
+  // Caso 0: o cliente enviou um corpo que não é um JSON válido
+  // (ex: vírgula sobrando, chaves/colchetes desbalanceados, aspas
+  // não fechadas). Isto acontece ANTES de qualquer rota, controller
+  // ou middleware de validação nosso ser executado — o próprio
+  // express.json() já rejeita a requisição e chama next(err).
+  //
+  // Sem este tratamento explícito, este erro cairia no Caso 2 (erro
+  // inesperado, 500) — o que é enganoso: um JSON malformado é um
+  // erro do CLIENTE (400), não uma falha interna do servidor. A
+  // aplicação está a funcionar perfeitamente; foi o payload que
+  // chegou quebrado.
+  if (isBodyParserSyntaxError(err)) {
+    const body: ErrorResponseBody = {
+      status: 'error',
+      message: 'Corpo da requisição não é um JSON válido.',
+    };
+
+    res.status(400).json(body);
+    return;
+  }
+
   // Caso 1: erro operacional e conhecido (instância de AppError).
   // Sabemos o status HTTP correto, e a mensagem foi escrita pela
   // própria aplicação — portanto é segura para expor ao cliente.

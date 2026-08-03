@@ -80,12 +80,18 @@ function isBodyParserSyntaxError(
  * manualmente. Basta lançar a classe de erro certa (`throw new
  * NotFoundError(...)`) e este middleware cuida de transformar isso em
  * uma resposta HTTP correta e padronizada — em um único lugar.
+ *
+ * Nota sobre `_next`: o parâmetro não é usado dentro da função, mas
+ * precisa continuar declarado (ver explicação acima sobre aridade).
+ * O prefixo `_` já é suficiente para o ESLint ignorá-lo — a regra
+ * `no-unused-vars` está configurada com `argsIgnorePattern: '^_'`
+ * em eslint.config.js — por isso nenhum comentário de
+ * eslint-disable é necessário aqui.
  */
 export function errorHandler(
   err: unknown,
   _req: Request,
   res: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _next: NextFunction
 ): void {
   // Caso 0: o cliente enviou um corpo que não é um JSON válido

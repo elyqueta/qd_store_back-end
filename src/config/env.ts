@@ -26,6 +26,52 @@ const envSchema = z.object({
     .string({ error: 'DATABASE_URL é obrigatória' })
     .min(1, 'DATABASE_URL não pode ser vazia')
     .url('DATABASE_URL deve ser uma URL de conexão válida'),
+
+  /**
+   * CORS_ORIGIN: lista de origens (front-ends) autorizadas a
+   * consumir esta API a partir do browser.
+   *
+   * Vem como string simples no .env (separada por vírgulas) porque
+   * variáveis de ambiente só suportam texto puro. Aqui transformamos
+   * essa string numa lista de URLs já "limpa" (sem espaços, sem
+   * entradas vazias), para que o resto da aplicação (src/config/cors.ts)
+   * trabalhe direto com um array, sem repetir esse parsing em outro
+   * lugar.
+   *
+   * Exemplo no .env:
+   *   CORS_ORIGIN=http://localhost:5173,https://qd-store.vercel.app
+   */
+  CORS_ORIGIN: z
+    .string({ error: 'CORS_ORIGIN é obrigatória' })
+    .min(1, 'CORS_ORIGIN não pode ser vazia')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter((origin) => origin.length > 0)
+    ),
+
+  /**
+   * Janela de tempo (ms) usada pelo express-rate-limit para contar
+   * requisições de um mesmo cliente. Default: 15 minutos.
+   */
+  RATE_LIMIT_WINDOW_MS: z.coerce
+    .number({ error: 'RATE_LIMIT_WINDOW_MS deve ser um número' })
+    .int()
+    .positive()
+    .default(15 * 60 * 1000),
+
+  /**
+   * Número máximo de requisições permitidas por IP dentro da janela
+   * acima. Default: 100 requisições / 15 minutos — generoso o
+   * suficiente para uso normal, mas suficiente para barrar abuso
+   * grosseiro (scraping agressivo, brute-force simples).
+   */
+  RATE_LIMIT_MAX: z.coerce
+    .number({ error: 'RATE_LIMIT_MAX deve ser um número' })
+    .int()
+    .positive()
+    .default(100),
 });
 
 /**

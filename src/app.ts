@@ -1,4 +1,4 @@
-import express, { Application, Request, Response } from 'express';
+import express, { Application, Request, Response, RequestHandler } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
@@ -34,6 +34,7 @@ const app: Application = express();
  * por esta API precisar de carregar recursos externos que os
  * defaults bloqueiem — por agora, nenhum problema foi identificado.
  */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 app.use(helmet());
 
 /**
@@ -43,6 +44,7 @@ app.use(helmet());
  * ambiente (dev -> produção) é só mudar uma variável de ambiente,
  * sem tocar em código.
  */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 app.use(cors(corsOptions));
 
 app.use(express.json());
@@ -53,7 +55,9 @@ app.use(express.urlencoded({ extended: true }));
  * nem ao Swagger UI. Ver justificação completa em
  * src/middlewares/rateLimiter.ts.
  */
-app.use('/api', apiLimiter);
+// Ensure apiLimiter is treated as a valid Express request handler to satisfy
+// TypeScript/ESLint checks about unsafe argument types.
+app.use('/api', apiLimiter as RequestHandler);
 
 /**
  * Documentação interativa (Swagger UI), disponível SOMENTE fora de

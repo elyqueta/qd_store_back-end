@@ -55,16 +55,14 @@ const findAll = asyncHandler(async (_req: Request, res: Response) => {
  * `next(error)`, e o errorHandler global converte isso em 404 de
  * forma padronizada. Esta função só existe para o caminho feliz.
  */
-const findById = asyncHandler(
-  async (req: Request<CategoryIdParam>, res: Response) => {
-    const category = await categoryService.findById(req.params.id);
+const findById = asyncHandler(async (req: Request<CategoryIdParam>, res: Response) => {
+  const category = await categoryService.findById(req.params.id);
 
-    res.status(200).json({
-      status: 'success',
-      data: category,
-    });
-  }
-);
+  res.status(200).json({
+    status: 'success',
+    data: category,
+  });
+});
 
 /**
  * PATCH /api/categories/:id

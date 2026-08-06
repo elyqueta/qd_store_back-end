@@ -1,10 +1,5 @@
 import { query } from '../database/pool';
-import {
-  CreateUserData,
-  User,
-  UserRow,
-  UserWithPasswordHash,
-} from '../types/user.types';
+import { CreateUserData, User, UserRow, UserWithPasswordHash } from '../types/user.types';
 import { ConflictError } from '../errors';
 
 /** Código SQLSTATE do Postgres para violação de UNIQUE constraint. */
@@ -69,14 +64,7 @@ async function create(data: CreateUserData): Promise<User> {
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, full_name, email, password_hash, phone, nif, account_type,
                  status, deactivated_at, created_at, updated_at`,
-      [
-        data.fullName,
-        data.email,
-        data.passwordHash,
-        data.phone,
-        data.nif ?? null,
-        data.accountType,
-      ]
+      [data.fullName, data.email, data.passwordHash, data.phone, data.nif ?? null, data.accountType]
     );
 
     return toUser(result.rows[0] as UserRow);

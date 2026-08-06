@@ -3,11 +3,7 @@ import { sessionRepository } from '../repositories/session.repository';
 import { User, UserWithPasswordHash } from '../types/user.types';
 import { LoginInput, RegisterInput } from '../validators/auth.validator';
 import { comparePassword, hashPassword } from '../utils/password.util';
-import {
-  generateAccessToken,
-  generateRefreshToken,
-  hashToken,
-} from '../utils/token.util';
+import { generateAccessToken, generateRefreshToken, hashToken } from '../utils/token.util';
 import { env } from '../config/env';
 import { UnauthorizedError } from '../errors';
 

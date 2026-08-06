@@ -66,7 +66,8 @@ export const registerSchema = z.object({
   phone: phoneSchema,
   nif: nifSchema.optional(),
   accountType: z.literal('personal', {
-    error: () => 'accountType deve ser "personal". Contas "business" ainda não são suportadas por este endpoint.',
+    error: () =>
+      'accountType deve ser "personal". Contas "business" ainda não são suportadas por este endpoint.',
   }),
 });
 

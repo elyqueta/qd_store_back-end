@@ -93,7 +93,7 @@ router.post(
   validate({ body: loginSchema }) as RequestHandler,
   ((req, res, next) => {
     void authController.login(req, res, next);
-  }) as RequestHandler,
+  }) as RequestHandler
 );
 
 /**

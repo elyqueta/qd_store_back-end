@@ -23,10 +23,7 @@ const labelSchema = z
  * rejeitaria de qualquer forma — só que com um erro melhor,
  * detectado ANTES de tocar no banco.
  */
-const iconSchema = z
-  .string()
-  .trim()
-  .max(10, 'icon deve ter no máximo 10 caracteres.');
+const iconSchema = z.string().trim().max(10, 'icon deve ter no máximo 10 caracteres.');
 
 /**
  * Schema de criação.

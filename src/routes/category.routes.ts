@@ -103,11 +103,7 @@ router.get('/', categoryController.findAll);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get(
-  '/:id',
-  validate({ params: categoryIdParamSchema }),
-  categoryController.findById
-);
+router.get('/:id', validate({ params: categoryIdParamSchema }), categoryController.findById);
 
 /**
  * @openapi
@@ -182,10 +178,6 @@ router.patch(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete(
-  '/:id',
-  validate({ params: categoryIdParamSchema }),
-  categoryController.remove
-);
+router.delete('/:id', validate({ params: categoryIdParamSchema }), categoryController.remove);
 
 export default router;

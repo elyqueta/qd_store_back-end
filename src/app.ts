@@ -7,6 +7,7 @@ import { notFoundHandler } from './middlewares/notFoundHandler';
 import { errorHandler } from './middlewares/errorHandler';
 import categoryRoutes from './routes/category.routes';
 import authRoutes from './routes/auth.routes';
+import companyRoutes from './routes/company.routes';
 
 const app: Application = express();
 
@@ -80,6 +81,7 @@ app.get(
 
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/companies', companyRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

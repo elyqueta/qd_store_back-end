@@ -1,78 +1,52 @@
-import express, { Application, Request, Response, RequestHandler } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import swaggerUi from 'swagger-ui-express';
+import express, { Application, Request, Response } from 'express';
 import { pool } from './database/pool';
 import { env } from './config/env';
 import { swaggerSpec } from './config/swagger';
-import { corsOptions } from './config/cors';
 import { asyncHandler } from './middlewares/asyncHandler';
-import { apiLimiter } from './middlewares/rateLimiter';
 import { notFoundHandler } from './middlewares/notFoundHandler';
 import { errorHandler } from './middlewares/errorHandler';
 import categoryRoutes from './routes/category.routes';
 
 const app: Application = express();
 
-/**
- * Helmet: define um conjunto de headers HTTP de segurança
- * recomendados (ex: remove `X-Powered-By: Express`, define
- * `X-Content-Type-Options: nosniff`, `Strict-Transport-Security`,
- * política restritiva de `Content-Security-Policy`, entre outros).
- *
- * Por que vem ANTES de tudo o resto?
- *
- * Estes headers precisam de estar presentes em TODA resposta da
- * aplicação, incluindo respostas de erro e do próprio Swagger UI.
- * Registá-lo primeiro garante que nenhuma resposta escapa dele.
- *
- * Por que zero configuração customizada por agora?
- *
- * Os defaults do Helmet já seguem as recomendações da OWASP para a
- * maioria das APIs REST. Vamos revisitar a Content-Security-Policy
- * especificamente quando o Swagger UI ou outra interface servida
- * por esta API precisar de carregar recursos externos que os
- * defaults bloqueiem — por agora, nenhum problema foi identificado.
- */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-app.use(helmet());
-
-/**
- * CORS: decide QUAIS origens (front-ends) podem consumir esta API a
- * partir do browser. As origens permitidas vêm de env.CORS_ORIGIN
- * (ver src/config/env.ts), nunca hard-coded aqui — assim, mudar de
- * ambiente (dev -> produção) é só mudar uma variável de ambiente,
- * sem tocar em código.
- */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-app.use(cors(corsOptions));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /**
- * Rate limiting: aplicado apenas ao prefixo `/api`, não a `/health`
- * nem ao Swagger UI. Ver justificação completa em
- * src/middlewares/rateLimiter.ts.
- */
-// Ensure apiLimiter is treated as a valid Express request handler to satisfy
-// TypeScript/ESLint checks about unsafe argument types.
-app.use('/api', apiLimiter as RequestHandler);
-
-/**
- * Documentação interativa (Swagger UI), disponível SOMENTE fora de
- * produção.
+ * Documentação interativa, disponível SOMENTE fora de produção.
  *
- * Por que isto importa: o Swagger UI expõe publicamente a estrutura
- * completa da API (endpoints, formatos de payload, exemplos de erro)
- * — informação valiosa para um atacante mapear a superfície de ataque
- * da aplicação. Em desenvolvimento isso é desejável (é a própria
- * finalidade da ferramenta); em produção, reduzimos a exposição por
- * padrão, seguindo o mesmo espírito de "fail-safe by default" que já
- * aplicamos em env.ts.
+ * Em vez do pacote @scalar/express-api-reference (ESM puro,
+ * incompatível com nosso projeto CommonJS), servimos uma página HTML
+ * estática que carrega a UI do Scalar via CDN diretamente no
+ * navegador. O servidor Node nunca importa código do Scalar — só
+ * entrega o JSON do spec (/openapi.json) e o HTML que aponta pra ele.
+ * Isso elimina o conflito de módulos por completo.
  */
 if (env.NODE_ENV !== 'production') {
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.get('/openapi.json', (_req: Request, res: Response) => {
+    res.json(swaggerSpec);
+  });
+
+  app.get('/api-docs', (_req: Request, res: Response) => {
+    res.type('html').send(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>QD Store API Docs</title>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </head>
+        <body>
+          <script
+            id="api-reference"
+            data-url="/openapi.json"
+            data-configuration='{"theme":"purple"}'
+          ></script>
+          <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+        </body>
+      </html>
+    `);
+  });
 }
 
 /**

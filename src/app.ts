@@ -5,9 +5,10 @@ import { swaggerSpec } from './config/swagger';
 import { asyncHandler } from './middlewares/asyncHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
 import { errorHandler } from './middlewares/errorHandler';
+import companyRoutes from './routes/company.routes';
 import categoryRoutes from './routes/category.routes';
 import authRoutes from './routes/auth.routes';
-import companyRoutes from './routes/company.routes';
+import adminRoutes from './routes/admin.routes';
 
 const app: Application = express();
 
@@ -82,6 +83,10 @@ app.get(
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/companies', companyRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/admin', adminRoutes);
+
 
 app.use(notFoundHandler);
 app.use(errorHandler);

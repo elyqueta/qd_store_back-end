@@ -64,6 +64,10 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
           },
         },
       },
+      /**
+       * accountType agora inclui 'admin' — reflete AccountType em
+       * types/user.types.ts (ver 090_add_admin_account_type.sql).
+       */
       User: {
         type: 'object',
         properties: {
@@ -72,13 +76,18 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
           email: { type: 'string', format: 'email', example: 'joao@exemplo.co.ao' },
           phone: { type: 'string', example: '923456789' },
           nif: { type: 'string', nullable: true, example: '005123456LA042' },
-          accountType: { type: 'string', enum: ['personal', 'business'] },
+          accountType: { type: 'string', enum: ['personal', 'business', 'admin'] },
           status: { type: 'string', enum: ['active', 'inactive', 'banned'] },
           deactivatedAt: { type: 'string', format: 'date-time', nullable: true },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' },
         },
       },
+      /**
+       * accountType continua restrito a 'personal' aqui, de propósito:
+       * este é o schema do endpoint PÚBLICO de registo. 'admin' nunca
+       * deve ser um valor aceite por um cliente não autenticado.
+       */
       RegisterInput: {
         type: 'object',
         required: ['fullName', 'email', 'password', 'phone', 'accountType'],
@@ -114,22 +123,29 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
           refreshToken: { type: 'string', example: 'a1b2c3...' },
         },
       },
-
-      /**
-       * A partir daqui: schemas do domínio EMPRESA / UTILIZADOR_EMPRESA.
-       * Company espelha types/company.types.ts; UserCompany espelha
-       * types/userCompany.types.ts.
-       */
-      Company: {
+      CompanyUser: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          fullName: { type: 'string', example: 'Maria Fernandes' },
+          email: { type: 'string', format: 'email', example: 'maria@empresa.co.ao' },
+          companyRole: { type: 'string', nullable: true, example: 'Gerente' },
+        },
+      },
+      CompanyWithUsers: {
         type: 'object',
         properties: {
           id: { type: 'string', format: 'uuid' },
           name: { type: 'string', example: 'Tech Solutions Lda' },
-          nif: { type: 'string', example: '005123456LA042' },
+          nif: { type: 'string', example: '5417896230' },
           sector: { type: 'string', nullable: true, example: 'Tecnologia' },
           status: { type: 'string', enum: ['active', 'inactive', 'banned'] },
           createdAt: { type: 'string', format: 'date-time' },
           updatedAt: { type: 'string', format: 'date-time' },
+          users: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/CompanyUser' },
+          },
         },
       },
       CreateCompanyInput: {

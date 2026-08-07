@@ -1,6 +1,6 @@
-// src/routes/userCompany.routes.ts
 import { Router } from 'express';
 import { userCompanyController } from '../controllers/userCompany.controller';
+import { requireAdmin } from '../middlewares/requireAdmin';
 import { validate } from '../middlewares/validate';
 import {
   companyIdParamOnlySchema,
@@ -83,7 +83,7 @@ router.post(
  * /api/companies/{companyId}/users:
  *   get:
  *     tags: [Company Users]
- *     summary: Lista os utilizadores associados a uma empresa
+ *     summary: Lista os utilizadores associados a uma empresa (apenas admin)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -104,6 +104,12 @@ router.post(
  *                 data:
  *                   type: array
  *                   items: { $ref: '#/components/schemas/UserCompany' }
+ *       403:
+ *         description: Utilizador autenticado não é administrador.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Empresa não encontrada.
  *         content:
@@ -111,7 +117,12 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/', validate({ params: companyIdParamOnlySchema }), userCompanyController.findAll);
+router.get(
+  '/',
+  requireAdmin,
+  validate({ params: companyIdParamOnlySchema }),
+  userCompanyController.findAll
+);
 
 /**
  * @openapi

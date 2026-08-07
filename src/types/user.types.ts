@@ -18,6 +18,17 @@ export type AccountType = 'personal' | 'business';
 /** Valores possíveis de USERS.status (enum user_status no Postgres). */
 export type UserStatus = 'active' | 'inactive' | 'banned';
 
+/**
+ * Valores possíveis de USERS.role (enum user_role no Postgres).
+ *
+ * Atenção: não confundir com user_company.role, que é o CARGO do
+ * utilizador dentro de uma empresa específica (ex.: "Gerente",
+ * "Comprador") — um VARCHAR livre, sem relação nenhuma com este
+ * enum. Este campo (`UserRole`) responde a uma pergunta diferente:
+ * "que nível de acesso este utilizador tem na PLATAFORMA".
+ */
+export type UserRole = 'customer' | 'admin';
+
 /** Formato exato devolvido pelo Postgres. Só o repository conhece isto. */
 export interface UserRow {
   id: string;
@@ -27,6 +38,7 @@ export interface UserRow {
   phone: string;
   nif: string | null;
   account_type: AccountType;
+  role: UserRole;
   status: UserStatus;
   deactivated_at: Date | null;
   created_at: Date;
@@ -44,6 +56,7 @@ export interface User {
   phone: string;
   nif: string | null;
   accountType: AccountType;
+  role: UserRole;
   status: UserStatus;
   deactivatedAt: Date | null;
   createdAt: Date;
@@ -62,9 +75,13 @@ export interface UserWithPasswordHash extends User {
 
 /**
  * Dados necessários para o REPOSITORY inserir um novo utilizador.
- * `passwordHash` chega aqui já com o hash calculado pelo service
- * (via bcrypt) — o repository nunca lida com senha em texto simples,
- * nem sabe que bcrypt existe.
+ *
+ * `role` é OPCIONAL e propositadamente não faz parte de
+ * RegisterInput (validators/auth.validator.ts) — o cliente nunca
+ * consegue enviá-lo pela API pública. Só existe para permitir que o
+ * script de seed (scripts/seedAdmin.ts) crie o primeiro admin
+ * diretamente via repository, sem passar pelo fluxo HTTP de
+ * registo. Quando ausente, o repository assume 'customer'.
  */
 export interface CreateUserData {
   fullName: string;
@@ -73,4 +90,5 @@ export interface CreateUserData {
   phone: string;
   nif?: string | null;
   accountType: AccountType;
+  role?: UserRole;
 }

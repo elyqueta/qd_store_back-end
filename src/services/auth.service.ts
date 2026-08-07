@@ -42,6 +42,7 @@ function toSafeUser(user: UserWithPasswordHash): User {
     phone: user.phone,
     nif: user.nif,
     accountType: user.accountType,
+    role: user.role,
     status: user.status,
     deactivatedAt: user.deactivatedAt,
     createdAt: user.createdAt,
@@ -59,6 +60,7 @@ async function issueTokens(user: User, context: SessionContext): Promise<AuthRes
     sub: user.id,
     email: user.email,
     accountType: user.accountType,
+    role: user.role,
   });
 
   const refreshToken = generateRefreshToken();

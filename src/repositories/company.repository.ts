@@ -1,16 +1,7 @@
 import { query } from '../database/pool';
-import { Company, CompanyRow, CreateCompanyData } from '../types/company.types';
-import { UpdateCompanyInput } from '../validators/company.validator';
-import { ConflictError } from '../errors';
+import { CompanyWithUsers, CompanyWithUsersRow } from '../types/company.types';
 
-/** Código SQLSTATE do Postgres para violação de UNIQUE constraint. */
-const PG_UNIQUE_VIOLATION = '23505';
-
-function isPgError(err: unknown): err is { code: string } {
-  return typeof err === 'object' && err !== null && 'code' in err;
-}
-
-function toCompany(row: CompanyRow): Company {
+function toCompanyWithUsers(row: CompanyWithUsersRow): CompanyWithUsers {
   return {
     id: row.id,
     name: row.name,
@@ -19,113 +10,62 @@ function toCompany(row: CompanyRow): Company {
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    users: row.users,
   };
 }
 
-async function create(data: CreateCompanyData): Promise<Company> {
-  try {
-    const result = await query<CompanyRow>(
-      `INSERT INTO company (name, nif, sector)
-       VALUES ($1, $2, $3)
-       RETURNING id, name, nif, sector, status, created_at, updated_at`,
-      [data.name, data.nif, data.sector ?? null]
-    );
-
-    return toCompany(result.rows[0] as CompanyRow);
-  } catch (err) {
-    if (isPgError(err) && err.code === PG_UNIQUE_VIOLATION) {
-      throw new ConflictError(`Já existe uma empresa registada com o NIF "${data.nif}".`);
-    }
-    throw err;
-  }
-}
-
-async function findAll(): Promise<Company[]> {
-  const result = await query<CompanyRow>(
-    `SELECT id, name, nif, sector, status, created_at, updated_at
-     FROM company
-     ORDER BY name ASC`
-  );
-
-  return result.rows.map(toCompany);
-}
-
-async function findById(id: string): Promise<Company | null> {
-  const result = await query<CompanyRow>(
-    `SELECT id, name, nif, sector, status, created_at, updated_at
-     FROM company
-     WHERE id = $1`,
-    [id]
-  );
-
-  const row = result.rows[0];
-  return row ? toCompany(row) : null;
-}
-
 /**
- * Note que "nif" NÃO aparece mais aqui — nem no schema (Zod já
- * rejeita o campo antes de chegar até aqui), nem na construção do
- * SET dinâmico. Mesmo que alguém, por engano, tentasse forçar um
- * "nif" no UpdateCompanyInput por fora do TypeScript (ex.: um cast
- * malicioso), este repository simplesmente não tem código nenhum
- * que leia essa propriedade — dupla proteção: tipo + implementação.
+ * Lista todas as empresas, cada uma já com o array dos seus
+ * utilizadores vinculados embutido.
+ *
+ * Por que agregar com json_agg dentro do SQL, em vez de fazer uma
+ * query para as empresas e depois, no Node, uma query por empresa
+ * para buscar os utilizadores dela?
+ *
+ * A segunda abordagem é o clássico problema "N+1 queries": para 20
+ * empresas, seriam 21 idas ao banco (1 + 20), cada uma com o seu
+ * próprio round-trip de rede. json_agg resolve isto numa ÚNICA
+ * query — o próprio Postgres monta o array de utilizadores por
+ * empresa, agrupado via GROUP BY c.id, e devolve tudo já pronto.
+ *
+ * FILTER (WHERE u.id IS NOT NULL): sem isto, uma empresa SEM
+ * nenhum utilizador vinculado (LEFT JOIN não encontra par) geraria
+ * um array com um único objeto todo com valores NULL
+ * (`[{"id": null, "fullName": null, ...}]`), em vez de um array
+ * vazio `[]`. O FILTER garante que só entram no agregado as linhas
+ * onde o JOIN de facto encontrou um utilizador.
+ *
+ * COALESCE(..., '[]'): cobre o caso em que FILTER remove TODAS as
+ * linhas (empresa sem nenhum utilizador) — nesse cenário json_agg
+ * devolveria NULL em vez de um array vazio; o COALESCE substitui
+ * por '[]' explicitamente.
  */
-async function update(id: string, data: UpdateCompanyInput): Promise<Company | null> {
-  const fields: string[] = [];
-  const values: unknown[] = [];
-  let paramIndex = 1;
-
-  if (data.name !== undefined) {
-    fields.push(`name = $${paramIndex}`);
-    values.push(data.name);
-    paramIndex += 1;
-  }
-
-  if ('sector' in data) {
-    fields.push(`sector = $${paramIndex}`);
-    values.push(data.sector);
-    paramIndex += 1;
-  }
-
-  if (fields.length === 0) {
-    return findById(id);
-  }
-
-  values.push(id);
-
-  const result = await query<CompanyRow>(
-    `UPDATE company
-     SET ${fields.join(', ')}
-     WHERE id = $${paramIndex}
-     RETURNING id, name, nif, sector, status, created_at, updated_at`,
-    values
+async function findAllWithUsers(): Promise<CompanyWithUsers[]> {
+  const result = await query<CompanyWithUsersRow>(
+    `SELECT
+       c.id, c.name, c.nif, c.sector, c.status, c.created_at, c.updated_at,
+       COALESCE(
+         json_agg(
+           json_build_object(
+             'id', u.id,
+             'fullName', u.full_name,
+             'email', u.email,
+             'companyRole', uc.role
+           )
+           ORDER BY u.full_name
+         ) FILTER (WHERE u.id IS NOT NULL),
+         '[]'
+       ) AS users
+     FROM company c
+     LEFT JOIN user_company uc ON uc.id_company = c.id
+     LEFT JOIN users u ON u.id = uc.id_user
+     GROUP BY c.id
+     ORDER BY c.name ASC`
   );
 
-  const row = result.rows[0];
-  return row ? toCompany(row) : null;
-}
-
-/**
- * Soft delete: mesma convenção de USER — nenhuma empresa é apagada
- * fisicamente, apenas marcada como 'inactive'.
- */
-async function deactivate(id: string): Promise<Company | null> {
-  const result = await query<CompanyRow>(
-    `UPDATE company
-     SET status = 'inactive'
-     WHERE id = $1 AND status != 'inactive'
-     RETURNING id, name, nif, sector, status, created_at, updated_at`,
-    [id]
-  );
-
-  const row = result.rows[0];
-  return row ? toCompany(row) : null;
+  return result.rows.map(toCompanyWithUsers);
 }
 
 export const companyRepository = {
-  create,
-  findAll,
-  findById,
-  update,
-  deactivate,
+  findAllWithUsers,
 };

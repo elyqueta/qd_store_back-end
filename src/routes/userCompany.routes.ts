@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { userCompanyController } from '../controllers/userCompany.controller';
-import { requireAdmin } from '../middlewares/requireAdmin';
+import { requireAdminOrCompanyMember } from '../middlewares/requireAdminOrCompanyMember';
 import { validate } from '../middlewares/validate';
 import {
   companyIdParamOnlySchema,
@@ -83,7 +83,7 @@ router.post(
  * /api/companies/{companyId}/users:
  *   get:
  *     tags: [Company Users]
- *     summary: Lista os utilizadores associados a uma empresa (apenas admin)
+ *     summary: Lista os utilizadores associados a uma empresa (admin ou membro da própria empresa)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -105,7 +105,7 @@ router.post(
  *                   type: array
  *                   items: { $ref: '#/components/schemas/UserCompany' }
  *       403:
- *         description: Utilizador autenticado não é administrador.
+ *         description: Utilizador autenticado não é administrador nem pertence a esta empresa.
  *         content:
  *           application/json:
  *             schema:
@@ -116,11 +116,17 @@ router.post(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       422:
+ *         description: companyId inválido.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get(
   '/',
-  requireAdmin,
   validate({ params: companyIdParamOnlySchema }),
+  requireAdminOrCompanyMember,
   userCompanyController.findAll
 );
 

@@ -54,7 +54,12 @@ if (env.NODE_ENV !== 'production') {
 
 /**
  * Rota de health check.
- * ...(inalterado)
+ *
+ * Consulta o banco (SELECT 1) a cada chamada para confirmar não só
+ * que o processo Node está de pé, mas que a conexão com o Postgres
+ * também está saudável — um orquestrador (Docker, Kubernetes) que só
+ * verificasse "o processo respondeu" poderia achar a aplicação
+ * saudável mesmo com o banco indisponível.
  */
 app.get(
   '/health',
@@ -80,13 +85,26 @@ app.get(
   })
 );
 
+/**
+ * Montagem das rotas da API.
+ *
+ * Cada linha abaixo aparece EXATAMENTE uma vez — router.use() é uma
+ * operação de REGISTO no middleware stack do Express, não uma
+ * declaração idempotente. Montar o mesmo router duas vezes no mesmo
+ * prefixo faz o Express avaliar essa cadeia de middlewares duas
+ * vezes por requisição (sem erro visível hoje, mas um risco real
+ * assim que qualquer um destes routers ganhar um middleware que não
+ * finaliza a resposta, como um `authenticate` no topo).
+ *
+ * userCompanyRoutes NÃO aparece aqui de propósito: é um router
+ * aninhado, montado dentro de company.routes.ts via
+ * `router.use('/:companyId/users', userCompanyRoutes)`, herdando o
+ * prefixo /api/companies/:companyId através de mergeParams: true.
+ */
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/companies', companyRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/categories', categoryRoutes);
 app.use('/api/admin', adminRoutes);
-
 
 app.use(notFoundHandler);
 app.use(errorHandler);

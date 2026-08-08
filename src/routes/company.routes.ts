@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { companyController } from '../controllers/company.controller';
 import { authenticate } from '../middlewares/authenticate';
 import { validate } from '../middlewares/validate';
+import { requireAdmin } from '../middlewares/requireAdmin';
 import {
   companyIdParamSchema,
   createCompanySchema,
@@ -93,7 +94,7 @@ router.post('/', validate({ body: createCompanySchema }), companyController.crea
  *                   type: array
  *                   items: { $ref: '#/components/schemas/Company' }
  */
-router.get('/', companyController.findAll);
+router.get('/', requireAdmin, companyController.findAll);
 
 /**
  * @openapi

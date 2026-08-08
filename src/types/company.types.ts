@@ -59,3 +59,24 @@ export interface CompanyUser {
 export interface CompanyWithUsers extends Company {
   users: CompanyUser[];
 }
+
+/**
+ * Dados necessários para o REPOSITORY inserir uma nova empresa.
+ *
+ * Note a ausência de `status`: toda empresa nasce com
+ * status = 'active' por DEFAULT na própria tabela (ver
+ * migrations/1739900000000_baseline-schema.js) — o repository não
+ * precisa (e não deve) decidir esse valor no INSERT. Isso evita que
+ * amanhã alguém, por engano, permita ao cliente criar uma empresa já
+ * 'inactive' ou 'banned' através de uma mudança descuidada no
+ * validator.
+ *
+ * `sector` é opcional/nulo pelo mesmo motivo já documentado em
+ * CreateCategoryData para `icon`: é um campo genuinamente opcional
+ * no modelo de dados (coluna sem NOT NULL).
+ */
+export interface CreateCompanyData {
+  name: string;
+  nif: string;
+  sector?: string | null;
+}

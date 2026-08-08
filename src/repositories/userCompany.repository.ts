@@ -91,9 +91,43 @@ async function remove(companyId: string, userId: string): Promise<boolean> {
   return (result.rowCount ?? 0) > 0;
 }
 
+/**
+ * Verifica se um utilizador está vinculado a uma empresa —
+ * independentemente do `role` (cargo) que ele tem lá dentro.
+ * Qualquer vínculo em user_company conta como "pertencer" à empresa.
+ *
+ * Usada pelo middleware de autorização requireAdminOrCompanyMember
+ * (ver middlewares/requireAdminOrCompanyMember.ts) para decidir se
+ * um utilizador não-admin pode listar os colegas da SUA PRÓPRIA
+ * empresa.
+ *
+ * Por que `SELECT 1 ... LIMIT 1` em vez de contar ou trazer a linha
+ * inteira?
+ *
+ * Só nos interessa SE existe, não QUANTAS linhas existem nem O QUE
+ * elas contêm — e como (id_user, id_company) é a PRIMARY KEY composta
+ * da tabela (ver baseline migration), o Postgres já tem um índice
+ * exatamente sobre essas duas colunas juntas. `LIMIT 1` garante que o
+ * Postgres para de procurar assim que encontra a primeira ocorrência,
+ * em vez de varrer linhas desnecessárias — mesmo sendo tecnicamente
+ * impossível haver mais de uma, por causa da própria PK.
+ */
+async function isMember(companyId: string, userId: string): Promise<boolean> {
+  const result = await query(
+    `SELECT 1
+     FROM user_company
+     WHERE id_company = $1 AND id_user = $2
+     LIMIT 1`,
+    [companyId, userId]
+  );
+
+  return (result.rowCount ?? 0) > 0;
+}
+
 export const userCompanyRepository = {
   create,
   findByCompany,
   updateRole,
   remove,
+  isMember,
 };

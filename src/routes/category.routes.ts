@@ -45,7 +45,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       422:
- *         description: Dados inválidos (ex: label ausente ou vazio).
+ *         description: 'Dados inválidos (ex: label ausente ou vazio).'
  *         content:
  *           application/json:
  *             schema:

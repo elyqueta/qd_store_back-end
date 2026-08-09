@@ -9,6 +9,8 @@ import companyRoutes from './routes/company.routes';
 import categoryRoutes from './routes/category.routes';
 import authRoutes from './routes/auth.routes';
 import adminRoutes from './routes/admin.routes';
+import locationRoutes from './routes/location.routes';
+import addressRoutes from './routes/address.routes';
 
 const app: Application = express();
 
@@ -105,6 +107,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/addresses', addressRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

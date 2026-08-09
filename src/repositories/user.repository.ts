@@ -1,10 +1,5 @@
 import { query } from '../database/pool';
-import {
-  CreateUserData,
-  User,
-  UserRow,
-  UserWithPasswordHash,
-} from '../types/user.types';
+import { CreateUserData, User, UserRow, UserWithPasswordHash } from '../types/user.types';
 import { ConflictError } from '../errors';
 
 const PG_UNIQUE_VIOLATION = '23505';

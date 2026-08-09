@@ -108,8 +108,14 @@ exports.up = (pgm) => {
         latitude      DECIMAL(10,8),
         longitude     DECIMAL(11,8),
         is_default    BOOLEAN NOT NULL DEFAULT false,
-        created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+        created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at    TIMESTAMP NOT NULL DEFAULT NOW()
     );
+
+    CREATE TRIGGER trg_address_set_updated_at
+        BEFORE UPDATE ON address
+        FOR EACH ROW
+        EXECUTE FUNCTION set_updated_at();   
 
     -- 020_catalog.sql
     CREATE TABLE category (

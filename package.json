@@ -18,7 +18,8 @@
     "migrate:up": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down",
     "migrate:create": "node-pg-migrate create",
-    "seed:admin": "tsx src/scripts/seedAdmin.ts"
+    "seed:admin": "tsx src/scripts/seedAdmin.ts",
+    "seed": "tsx src/scripts/seeds/index.ts"
   },
   "keywords": [
     "ecommerce",

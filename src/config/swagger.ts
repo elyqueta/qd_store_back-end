@@ -52,6 +52,38 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
           },
         },
       },
+      DeliveryType: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          name: { type: 'string', example: 'Entrega Express' },
+          description: { type: 'string', nullable: true, example: 'Entrega prioritária' },
+          price: { type: 'number', minimum: 0, example: 2500 },
+          type: { type: 'string', enum: ['standard', 'express', 'corporate', 'pickup'] },
+          isActive: { type: 'boolean', example: true },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      CreateDeliveryTypeInput: {
+        type: 'object',
+        required: ['name', 'price', 'type'],
+        properties: {
+          name: { type: 'string', maxLength: 100, example: 'Entrega Express' },
+          description: { type: 'string', maxLength: 200, example: 'Entrega prioritária' },
+          price: { type: 'number', minimum: 0, example: 2500 },
+          type: { type: 'string', enum: ['standard', 'express', 'corporate', 'pickup'] },
+        },
+      },
+      UpdateDeliveryTypeInput: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', maxLength: 100, example: 'Entrega Express' },
+          description: { type: 'string', maxLength: 200, nullable: true },
+          price: { type: 'number', minimum: 0, example: 2500 },
+          type: { type: 'string', enum: ['standard', 'express', 'corporate', 'pickup'] },
+        },
+      },
       ErrorResponse: {
         type: 'object',
         properties: {
@@ -132,10 +164,24 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
           companyRole: { type: 'string', nullable: true, example: 'Gerente' },
         },
       },
+      Company: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          ownerId: { type: 'string', format: 'uuid' },
+          name: { type: 'string', example: 'Tech Solutions Lda' },
+          nif: { type: 'string', example: '5417896230' },
+          sector: { type: 'string', nullable: true, example: 'Tecnologia' },
+          status: { type: 'string', enum: ['active', 'inactive', 'banned'] },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
       CompanyWithUsers: {
         type: 'object',
         properties: {
           id: { type: 'string', format: 'uuid' },
+          ownerId: { type: 'string', format: 'uuid' },
           name: { type: 'string', example: 'Tech Solutions Lda' },
           nif: { type: 'string', example: '5417896230' },
           sector: { type: 'string', nullable: true, example: 'Tecnologia' },

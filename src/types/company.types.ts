@@ -14,6 +14,7 @@ export type CompanyStatus = 'active' | 'inactive' | 'banned';
 
 export interface CompanyRow {
   id: string;
+  id_owner: string;
   name: string;
   nif: string;
   sector: string | null;
@@ -41,6 +42,7 @@ export interface CompanyWithUsersRow extends CompanyRow {
 
 export interface Company {
   id: string;
+  ownerId: string;
   name: string;
   nif: string;
   sector: string | null;
@@ -76,6 +78,7 @@ export interface CompanyWithUsers extends Company {
  * no modelo de dados (coluna sem NOT NULL).
  */
 export interface CreateCompanyData {
+  ownerId: string;
   name: string;
   nif: string;
   sector?: string | null;

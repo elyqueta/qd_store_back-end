@@ -3,8 +3,9 @@ import { Company } from '../types/company.types';
 import { CreateCompanyInput, UpdateCompanyInput } from '../validators/company.validator';
 import { NotFoundError } from '../errors';
 
-async function create(input: CreateCompanyInput): Promise<Company> {
+async function create(input: CreateCompanyInput, ownerId: string): Promise<Company> {
   return companyRepository.create({
+    ownerId,
     name: input.name,
     nif: input.nif,
     sector: input.sector ?? null,

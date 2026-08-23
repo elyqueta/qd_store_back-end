@@ -1,4 +1,4 @@
-import { query } from '../database/pool';
+import { getClient, query } from '../database/pool';
 import {
   Company,
   CompanyRow,
@@ -32,6 +32,7 @@ function isPgError(err: unknown): err is { code: string } {
 function toCompany(row: CompanyRow): Company {
   return {
     id: row.id,
+    ownerId: row.id_owner,
     name: row.name,
     nif: row.nif,
     sector: row.sector,
@@ -44,6 +45,7 @@ function toCompany(row: CompanyRow): Company {
 function toCompanyWithUsers(row: CompanyWithUsersRow): CompanyWithUsers {
   return {
     id: row.id,
+    ownerId: row.id_owner,
     name: row.name,
     nif: row.nif,
     sector: row.sector,
@@ -63,18 +65,30 @@ function toCompanyWithUsers(row: CompanyWithUsersRow): CompanyWithUsers {
  * técnica já usada em category.repository.ts.
  */
 async function create(data: CreateCompanyData): Promise<Company> {
+  const client = await getClient();
+
   try {
-    const result = await query<CompanyRow>(
-      `INSERT INTO company (name, nif, sector)
-       VALUES ($1, $2, $3)
-       RETURNING id, name, nif, sector, status, created_at, updated_at`,
-      [data.name, data.nif, data.sector ?? null]
+    await client.query('BEGIN');
+
+    const result = await client.query<CompanyRow>(
+      `INSERT INTO company (id_owner, name, nif, sector)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, id_owner, name, nif, sector, status, created_at, updated_at`,
+      [data.ownerId, data.name, data.nif, data.sector ?? null]
     );
 
-    // result.rows[0] é seguro: um INSERT bem-sucedido com RETURNING
-    // sempre devolve exatamente uma linha.
-    return toCompany(result.rows[0] as CompanyRow);
+    const company = toCompany(result.rows[0] as CompanyRow);
+
+    await client.query(
+      `INSERT INTO user_company (id_user, id_company, role)
+       VALUES ($1, $2, $3)`,
+      [data.ownerId, company.id, 'Proprietário']
+    );
+
+    await client.query('COMMIT');
+    return company;
   } catch (err) {
+    await client.query('ROLLBACK');
     if (isPgError(err) && err.code === PG_UNIQUE_VIOLATION) {
       throw new ConflictError(`Já existe uma empresa registada com o NIF "${data.nif}".`);
     }
@@ -82,6 +96,8 @@ async function create(data: CreateCompanyData): Promise<Company> {
     // genérico no errorHandler global, comportamento correto para
     // falhas que não sabemos explicar ao cliente.
     throw err;
+  } finally {
+    client.release();
   }
 }
 
@@ -96,7 +112,7 @@ async function create(data: CreateCompanyData): Promise<Company> {
  */
 async function findAll(): Promise<Company[]> {
   const result = await query<CompanyRow>(
-    `SELECT id, name, nif, sector, status, created_at, updated_at
+    `SELECT id, id_owner, name, nif, sector, status, created_at, updated_at
      FROM company
      ORDER BY name ASC`
   );
@@ -114,7 +130,7 @@ async function findAll(): Promise<Company[]> {
  */
 async function findById(id: string): Promise<Company | null> {
   const result = await query<CompanyRow>(
-    `SELECT id, name, nif, sector, status, created_at, updated_at
+    `SELECT id, id_owner, name, nif, sector, status, created_at, updated_at
      FROM company
      WHERE id = $1`,
     [id]
@@ -171,9 +187,9 @@ async function update(id: string, data: UpdateCompanyInput): Promise<Company | n
 
   const result = await query<CompanyRow>(
     `UPDATE company
-     SET ${fields.join(', ')}
-     WHERE id = $${paramIndex}
-     RETURNING id, name, nif, sector, status, created_at, updated_at`,
+      SET ${fields.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING id, id_owner, name, nif, sector, status, created_at, updated_at`,
     values
   );
 
@@ -248,7 +264,7 @@ async function deactivate(id: string): Promise<boolean> {
 async function findAllWithUsers(): Promise<CompanyWithUsers[]> {
   const result = await query<CompanyWithUsersRow>(
     `SELECT
-       c.id, c.name, c.nif, c.sector, c.status, c.created_at, c.updated_at,
+         c.id, c.id_owner, c.name, c.nif, c.sector, c.status, c.created_at, c.updated_at,
        COALESCE(
          json_agg(
            json_build_object(

@@ -189,7 +189,7 @@ router.patch(
  * /api/products/{productId}/specifications/{id}:
  *   delete:
  *     tags: [Product Specifications]
- *     summary:' Remove uma especificação (apenas administradores)'
+ *     summary: 'Remove uma especificação (apenas administradores)'
  *     security:
  *       - bearerAuth: []
  *     parameters:

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { userCompanyController } from '../controllers/userCompany.controller';
 import { requireAdminOrCompanyMember } from '../middlewares/requireAdminOrCompanyMember';
+import { requireAdminOrCompanyOwner } from '../middlewares/requireAdminOrCompanyOwner';
 import { validate } from '../middlewares/validate';
 import {
   companyIdParamOnlySchema,
@@ -59,6 +60,12 @@ const router = Router({ mergeParams: true });
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Apenas o proprietário da empresa ou um administrador pode realizar esta ação.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       409:
  *         description: Utilizador já associado a esta empresa.
  *         content:
@@ -75,6 +82,7 @@ const router = Router({ mergeParams: true });
 router.post(
   '/',
   validate({ params: companyIdParamOnlySchema, body: createUserCompanySchema }),
+  requireAdminOrCompanyOwner('companyId'),
   userCompanyController.associate
 );
 
@@ -169,6 +177,12 @@ router.get(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Apenas o proprietário da empresa ou um administrador pode realizar esta ação.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       422:
  *         description: Dados inválidos.
  *         content:
@@ -179,6 +193,7 @@ router.get(
 router.patch(
   '/:userId',
   validate({ params: userCompanyParamSchema, body: updateUserCompanySchema }),
+  requireAdminOrCompanyOwner('companyId'),
   userCompanyController.update
 );
 
@@ -208,10 +223,17 @@ router.patch(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Apenas o proprietário da empresa ou um administrador pode realizar esta ação.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete(
   '/:userId',
   validate({ params: userCompanyParamSchema }),
+  requireAdminOrCompanyOwner('companyId'),
   userCompanyController.remove
 );
 

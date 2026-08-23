@@ -3,6 +3,7 @@ import { companyController } from '../controllers/company.controller';
 import { authenticate } from '../middlewares/authenticate';
 import { validate } from '../middlewares/validate';
 import { requireAdmin } from '../middlewares/requireAdmin';
+import { requireAdminOrCompanyOwner } from '../middlewares/requireAdminOrCompanyOwner';
 import {
   companyIdParamSchema,
   createCompanySchema,
@@ -163,6 +164,12 @@ router.get('/:id', validate({ params: companyIdParamSchema }), companyController
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Apenas o proprietário da empresa ou um administrador pode realizar esta ação.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       409:
  *         description: NIF já usado por outra empresa.
  *         content:
@@ -179,6 +186,7 @@ router.get('/:id', validate({ params: companyIdParamSchema }), companyController
 router.patch(
   '/:id',
   validate({ params: companyIdParamSchema, body: updateCompanySchema }),
+  requireAdminOrCompanyOwner('id'),
   companyController.update
 );
 
@@ -198,6 +206,12 @@ router.patch(
  *     responses:
  *       204:
  *         description: Empresa desativada com sucesso (sem conteúdo).
+ *       403:
+ *         description: Apenas o proprietário da empresa ou um administrador pode realizar esta ação.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Empresa não encontrada ou já inactiva.
  *         content:
@@ -205,7 +219,12 @@ router.patch(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete('/:id', validate({ params: companyIdParamSchema }), companyController.remove);
+router.delete(
+  '/:id',
+  validate({ params: companyIdParamSchema }),
+  requireAdminOrCompanyOwner('id'),
+  companyController.remove
+);
 
 /**
  * Rotas aninhadas: /api/companies/:companyId/users/...

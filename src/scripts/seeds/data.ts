@@ -19,6 +19,7 @@ export interface SeedCompany {
   name: string;
   nif: string;
   sector: string;
+  ownerEmail: string;
 }
 
 export interface SeedCategory {
@@ -145,8 +146,18 @@ export const SEED_USERS: SeedUser[] = [
 ];
 
 export const SEED_COMPANIES: SeedCompany[] = [
-  { name: 'QD Solutions', nif: '500000001', sector: 'Tecnologia' },
-  { name: 'TechAngola', nif: '500000002', sector: 'Informática' },
+  {
+    name: 'QD Solutions',
+    nif: '500000001',
+    sector: 'Tecnologia',
+    ownerEmail: 'admin@qd.co.ao',
+  },
+  {
+    name: 'TechAngola',
+    nif: '500000002',
+    sector: 'Informática',
+    ownerEmail: 'empresa.tech@example.com',
+  },
 ];
 
 export const SEED_USER_COMPANIES: SeedUserCompany[] = [
@@ -459,9 +470,19 @@ export const SEED_ADDRESSES: SeedAddress[] = [
 ];
 
 export const SEED_DELIVERY_TYPES: SeedDeliveryType[] = [
-  { name: 'Entrega Standard', description: 'Entrega em 3-5 dias úteis', price: 2500, type: 'standard' },
+  {
+    name: 'Entrega Standard',
+    description: 'Entrega em 3-5 dias úteis',
+    price: 2500,
+    type: 'standard',
+  },
   { name: 'Entrega Express', description: 'Entrega em 24-48 horas', price: 5000, type: 'express' },
-  { name: 'Levantamento na Loja', description: 'Levantamento gratuito na loja', price: 0, type: 'pickup' },
+  {
+    name: 'Levantamento na Loja',
+    description: 'Levantamento gratuito na loja',
+    price: 0,
+    type: 'pickup',
+  },
 ];
 
 export const SEED_PAYMENT_METHODS: SeedPaymentMethod[] = [
@@ -472,9 +493,17 @@ export const SEED_PAYMENT_METHODS: SeedPaymentMethod[] = [
 
 export const SEED_CART_ITEMS: SeedCartItem[] = [
   { userEmail: 'joao.silva@example.com', productName: 'MacBook Pro 14" M3', quantity: 1 },
-  { userEmail: 'joao.silva@example.com', productName: 'Auscultadores Bluetooth Sony WH-1000XM5', quantity: 2 },
+  {
+    userEmail: 'joao.silva@example.com',
+    productName: 'Auscultadores Bluetooth Sony WH-1000XM5',
+    quantity: 2,
+  },
   { userEmail: 'maria.santos@example.com', productName: 'iPhone 15 Pro', quantity: 1 },
-  { userEmail: 'maria.santos@example.com', productName: 'Teclado Mecânico Keychron K8 Pro', quantity: 1 },
+  {
+    userEmail: 'maria.santos@example.com',
+    productName: 'Teclado Mecânico Keychron K8 Pro',
+    quantity: 1,
+  },
 ];
 
 export const SEED_ORDERS: SeedOrder[] = [

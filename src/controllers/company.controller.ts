@@ -9,7 +9,7 @@ import {
 
 const create = asyncHandler(
   async (req: Request<Record<string, string>, unknown, CreateCompanyInput>, res: Response) => {
-    const company = await companyService.create(req.body);
+    const company = await companyService.create(req.body, req.user!.sub);
 
     res.status(201).json({
       status: 'success',

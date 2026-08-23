@@ -16,7 +16,7 @@ async function runSeeds(): Promise<void> {
   const userIds = await seedUsers();
 
   console.warn('\n--- Empresas ---');
-  const companyIds = await seedCompanies();
+  const companyIds = await seedCompanies(userIds);
   console.warn('\n--- Associações utilizador-empresa ---');
   await seedUserCompanies(userIds, companyIds);
 

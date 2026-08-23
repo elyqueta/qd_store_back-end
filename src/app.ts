@@ -12,6 +12,7 @@ import adminRoutes from './routes/admin.routes';
 import locationRoutes from './routes/location.routes';
 import addressRoutes from './routes/address.routes';
 import productRoutes from './routes/product.routes';
+import deliveryTypeRoutes from './routes/deliveryType.routes';
 
 const app: Application = express();
 
@@ -111,6 +112,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/delivery-types', deliveryTypeRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

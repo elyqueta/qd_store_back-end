@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { categoryController } from '../controllers/category.controller';
 import { validate } from '../middlewares/validate';
+import { authenticate } from '../middlewares/authenticate';
+import { requireAdmin } from '../middlewares/requireAdmin';
 import {
   categoryIdParamSchema,
   createCategorySchema,
@@ -44,6 +46,18 @@ const router = Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Token de acesso ausente, inválido ou expirado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Utilizador autenticado, mas sem papel de administrador.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       422:
  *         description: 'Dados inválidos (ex: label ausente ou vazio).'
  *         content:
@@ -51,7 +65,13 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', validate({ body: createCategorySchema }), categoryController.create);
+router.post(
+  '/',
+  authenticate,
+  requireAdmin,
+  validate({ body: createCategorySchema }),
+  categoryController.create
+);
 
 /**
  * @openapi
@@ -132,6 +152,18 @@ router.get('/:id', validate({ params: categoryIdParamSchema }), categoryControll
  *               properties:
  *                 status: { type: string, example: success }
  *                 data: { $ref: '#/components/schemas/Category' }
+ *       401:
+ *         description: Token de acesso ausente, inválido ou expirado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Utilizador autenticado, mas sem papel de administrador.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Categoria não encontrada.
  *         content:
@@ -147,6 +179,8 @@ router.get('/:id', validate({ params: categoryIdParamSchema }), categoryControll
  */
 router.patch(
   '/:id',
+  authenticate,
+  requireAdmin,
   validate({ params: categoryIdParamSchema, body: updateCategorySchema }),
   categoryController.update
 );
@@ -165,6 +199,18 @@ router.patch(
  *     responses:
  *       204:
  *         description: Categoria removida com sucesso (sem conteúdo).
+ *       401:
+ *         description: Token de acesso ausente, inválido ou expirado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Utilizador autenticado, mas sem papel de administrador.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Categoria não encontrada.
  *         content:
@@ -178,6 +224,12 @@ router.patch(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete('/:id', validate({ params: categoryIdParamSchema }), categoryController.remove);
+router.delete(
+  '/:id',
+  authenticate,
+  requireAdmin,
+  validate({ params: categoryIdParamSchema }),
+  categoryController.remove
+);
 
 export default router;

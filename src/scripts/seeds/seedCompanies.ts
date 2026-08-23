@@ -10,7 +10,7 @@ import { SEED_COMPANIES, SEED_USER_COMPANIES } from './data';
  * e que os utilizadores estão associados a elas com os cargos
  * correctos. Devolve um Map<nome, id> para referência noutros módulos.
  */
-export async function seedCompanies(): Promise<Map<string, string>> {
+export async function seedCompanies(userIds: Map<string, string>): Promise<Map<string, string>> {
   const nameToId = new Map<string, string>();
 
   for (const company of SEED_COMPANIES) {
@@ -19,12 +19,24 @@ export async function seedCompanies(): Promise<Map<string, string>> {
     ]);
 
     if (existing.rows[0]) {
-      console.warn(`Empresa "${company.name}" já existe (id: ${existing.rows[0].id}). Nada a fazer.`);
+      console.warn(
+        `Empresa "${company.name}" já existe (id: ${existing.rows[0].id}). Nada a fazer.`
+      );
       nameToId.set(company.name, existing.rows[0].id);
       continue;
     }
 
+    const ownerId = userIds.get(company.ownerEmail);
+
+    if (!ownerId) {
+      console.error(
+        `Proprietário "${company.ownerEmail}" não encontrado para a empresa "${company.name}".`
+      );
+      continue;
+    }
+
     const created = await companyRepository.create({
+      ownerId,
       name: company.name,
       nif: company.nif,
       sector: company.sector,
@@ -53,7 +65,9 @@ export async function seedUserCompanies(
     const isMember = await userCompanyRepository.isMember(companyId, userId);
 
     if (isMember) {
-      console.warn(`Associação ${assoc.userEmail} -> ${assoc.companyName} já existe. Nada a fazer.`);
+      console.warn(
+        `Associação ${assoc.userEmail} -> ${assoc.companyName} já existe. Nada a fazer.`
+      );
       continue;
     }
 

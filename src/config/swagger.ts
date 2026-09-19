@@ -368,6 +368,7 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
         properties: {
           id: { type: 'string', format: 'uuid' },
           categoryId: { type: 'string', format: 'uuid' },
+          categoryName: { type: 'string', example: 'Portáteis' },
           name: { type: 'string', example: 'Portátil Dell Inspiron 15' },
           description: { type: 'string', nullable: true },
           price: { type: 'number', example: 450000 },

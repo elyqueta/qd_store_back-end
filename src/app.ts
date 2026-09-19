@@ -1,6 +1,8 @@
 import express, { Application, Request, Response } from 'express';
+import cors from 'cors';
 import { pool } from './database/pool';
 import { env } from './config/env';
+import { corsOptions } from './config/cors';
 import { swaggerSpec } from './config/swagger';
 import { asyncHandler } from './middlewares/asyncHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
@@ -15,6 +17,8 @@ import productRoutes from './routes/product.routes';
 import deliveryTypeRoutes from './routes/deliveryType.routes';
 
 const app: Application = express();
+
+app.use(cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

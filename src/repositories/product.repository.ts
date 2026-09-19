@@ -21,6 +21,7 @@ function toProduct(row: ProductRow): Product {
   return {
     id: row.id,
     categoryId: row.id_category,
+    ...(row.category_name !== undefined ? { categoryName: row.category_name } : {}),
     name: row.name,
     description: row.description,
     price: Number(row.price),
@@ -34,6 +35,9 @@ function toProduct(row: ProductRow): Product {
 
 const RETURNING_COLUMNS = `id, id_category, name, description, price, original_price,
   badge, status, created_at, updated_at`;
+const LIST_COLUMNS = `product.id, product.id_category, product.name, product.description,
+  product.price, product.original_price, product.badge, product.status,
+  product.created_at, product.updated_at`;
 
 async function create(data: CreateProductData): Promise<Product> {
   const result = await query<ProductRow>(
@@ -107,10 +111,11 @@ async function findAll(
   const offsetParamIndex = values.length + 2;
 
   const dataResult = await query<ProductRow>(
-    `SELECT ${RETURNING_COLUMNS}
+    `SELECT ${LIST_COLUMNS}, category.label AS category_name
      FROM product
+     INNER JOIN category ON category.id = product.id_category
      ${clause}
-     ORDER BY created_at DESC
+    ORDER BY product.created_at DESC
      LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`,
     [...values, pagination.limit, offset]
   );

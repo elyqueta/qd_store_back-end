@@ -1,4 +1,5 @@
 import { CorsOptions } from 'cors';
+import { ForbiddenError } from '../errors';
 import { env } from './env';
 
 /**
@@ -41,7 +42,7 @@ export const corsOptions: CorsOptions = {
       return;
     }
 
-    callback(new Error(`Origem não permitida pelo CORS: ${origin}`));
+    callback(new ForbiddenError(`Origem não permitida pelo CORS: ${origin}`));
   },
 
   // Permite que o browser envie cookies/credenciais em requisições

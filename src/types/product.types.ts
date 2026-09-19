@@ -23,6 +23,7 @@ export type ProductStatus = 'active' | 'inactive' | 'out_of_stock';
 export interface ProductRow {
   id: string;
   id_category: string;
+  category_name?: string;
   name: string;
   description: string | null;
   price: string;
@@ -37,6 +38,7 @@ export interface ProductRow {
 export interface Product {
   id: string;
   categoryId: string;
+  categoryName?: string;
   name: string;
   description: string | null;
   price: number;

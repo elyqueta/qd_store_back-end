@@ -134,6 +134,22 @@ pai, herdando o prefixo.
   `package.json` ou adiciona migrations. Sem ele, o compose reutiliza
   a imagem existente e arranca em segundos.
 
+### `ECONNREFUSED ::1:1914` no API client, mas o browser funciona?
+
+É IPv6. O Docker publica as portas em IPv4 por omissão, e clientes que
+resolvem `localhost` para `::1` (Node 17+, WSL, Windows, clientes
+containerizados) não encontram nada a escutar lá — daí o
+`ECONNREFUSED ::1:1914`. O browser funciona porque implementa Happy
+Eyeballs: tenta IPv6, falha, e cai imediatamente para IPv4.
+
+O compose já publica em dual-stack para os dois serviços
+(`127.0.0.1:1914:1914` + `[::1]:1914:1914`), o que resolve a maioria
+dos casos. Se o teu cliente insistir, use o IP literal na URL:
+
+```
+http://127.0.0.1:1914/api/v1/categories
+```
+
 ## Logs
 
 ```bash

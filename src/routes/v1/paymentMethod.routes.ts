@@ -1,29 +1,29 @@
 import { Router } from 'express';
-import { deliveryTypeController } from '../controllers/deliveryType.controller';
-import { authenticate } from '../middlewares/authenticate';
-import { requireAdmin } from '../middlewares/requireAdmin';
-import { validate } from '../middlewares/validate';
+import { paymentMethodController } from '../../controllers/paymentMethod.controller';
+import { authenticate } from '../../middlewares/authenticate';
+import { requireAdmin } from '../../middlewares/requireAdmin';
+import { validate } from '../../middlewares/validate';
 import {
-  createDeliveryTypeSchema,
-  deliveryTypeIdParamSchema,
-  updateDeliveryTypeSchema,
-} from '../validators/deliveryType.validator';
+  createPaymentMethodSchema,
+  paymentMethodIdParamSchema,
+  updatePaymentMethodSchema,
+} from '../../validators/paymentMethod.validator';
 
 const router = Router();
 
 /**
  * @openapi
  * tags:
- *   name: Delivery Types
- *   description: Gestão dos tipos de entrega
+ *   name: Payment Methods
+ *   description: Gestão dos métodos de pagamento
  */
 
 /**
  * @openapi
- * /api/delivery-types:
+ * /api/v1/payment-methods:
  *   post:
- *     tags: [Delivery Types]
- *     summary: Cria um tipo de entrega (apenas administradores)
+ *     tags: [Payment Methods]
+ *     summary: Cria um método de pagamento (apenas administradores)
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -31,10 +31,10 @@ const router = Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreateDeliveryTypeInput'
+ *             $ref: '#/components/schemas/CreatePaymentMethodInput'
  *     responses:
  *       201:
- *         description: Tipo de entrega criado com sucesso.
+ *         description: Método de pagamento criado com sucesso.
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -55,38 +55,38 @@ router.post(
   '/',
   authenticate,
   requireAdmin,
-  validate({ body: createDeliveryTypeSchema }),
-  deliveryTypeController.create
+  validate({ body: createPaymentMethodSchema }),
+  paymentMethodController.create
 );
 
 /**
  * @openapi
- * /api/delivery-types:
+ * /api/v1/payment-methods:
  *   get:
- *     tags: [Delivery Types]
- *     summary: Lista os tipos de entrega activos (público)
+ *     tags: [Payment Methods]
+ *     summary: Lista os métodos de pagamento activos (público)
  *     responses:
  *       200:
- *         description: Lista de tipos de entrega activos.
+ *         description: Lista de métodos de pagamento activos.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 count: { type: integer, example: 4 }
+ *                 count: { type: integer, example: 3 }
  *                 data:
  *                   type: array
- *                   items: { $ref: '#/components/schemas/DeliveryType' }
+ *                   items: { $ref: '#/components/schemas/PaymentMethod' }
  */
-router.get('/', deliveryTypeController.findAll);
+router.get('/', paymentMethodController.findAll);
 
 /**
  * @openapi
- * /api/delivery-types/{id}:
+ * /api/v1/payment-methods/{id}:
  *   get:
- *     tags: [Delivery Types]
- *     summary: Busca um tipo de entrega pelo id (público)
+ *     tags: [Payment Methods]
+ *     summary: Busca um método de pagamento pelo id (público)
  *     parameters:
  *       - in: path
  *         name: id
@@ -94,16 +94,16 @@ router.get('/', deliveryTypeController.findAll);
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Tipo de entrega encontrado.
+ *         description: Método de pagamento encontrado.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/DeliveryType' }
+ *                 data: { $ref: '#/components/schemas/PaymentMethod' }
  *       404:
- *         description: Tipo de entrega não encontrado.
+ *         description: Método de pagamento não encontrado.
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -115,16 +115,16 @@ router.get('/', deliveryTypeController.findAll);
  */
 router.get(
   '/:id',
-  validate({ params: deliveryTypeIdParamSchema }),
-  deliveryTypeController.findById
+  validate({ params: paymentMethodIdParamSchema }),
+  paymentMethodController.findById
 );
 
 /**
  * @openapi
- * /api/delivery-types/{id}:
+ * /api/v1/payment-methods/{id}:
  *   patch:
- *     tags: [Delivery Types]
- *     summary: Atualiza parcialmente um tipo de entrega (apenas administradores)
+ *     tags: [Payment Methods]
+ *     summary: Actualiza parcialmente um método de pagamento (apenas administradores)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -137,10 +137,10 @@ router.get(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateDeliveryTypeInput'
+ *             $ref: '#/components/schemas/UpdatePaymentMethodInput'
  *     responses:
  *       200:
- *         description: Tipo de entrega atualizado.
+ *         description: Método de pagamento actualizado.
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -152,7 +152,7 @@ router.get(
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorResponse' }
  *       404:
- *         description: Tipo de entrega não encontrado.
+ *         description: Método de pagamento não encontrado.
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -166,16 +166,16 @@ router.patch(
   '/:id',
   authenticate,
   requireAdmin,
-  validate({ params: deliveryTypeIdParamSchema, body: updateDeliveryTypeSchema }),
-  deliveryTypeController.update
+  validate({ params: paymentMethodIdParamSchema, body: updatePaymentMethodSchema }),
+  paymentMethodController.update
 );
 
 /**
  * @openapi
- * /api/delivery-types/{id}:
+ * /api/v1/payment-methods/{id}:
  *   delete:
- *     tags: [Delivery Types]
- *     summary: Desactiva um tipo de entrega (apenas administradores)
+ *     tags: [Payment Methods]
+ *     summary: Desactiva um método de pagamento (apenas administradores)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -185,7 +185,7 @@ router.patch(
  *         schema: { type: string, format: uuid }
  *     responses:
  *       204:
- *         description: Tipo de entrega desactivado com sucesso (sem conteúdo).
+ *         description: Método de pagamento desactivado com sucesso (sem conteúdo).
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -197,7 +197,7 @@ router.patch(
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorResponse' }
  *       404:
- *         description: Tipo de entrega não encontrado ou já inactivo.
+ *         description: Método de pagamento não encontrado ou já inactivo.
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -211,8 +211,8 @@ router.delete(
   '/:id',
   authenticate,
   requireAdmin,
-  validate({ params: deliveryTypeIdParamSchema }),
-  deliveryTypeController.remove
+  validate({ params: paymentMethodIdParamSchema }),
+  paymentMethodController.remove
 );
 
 export default router;

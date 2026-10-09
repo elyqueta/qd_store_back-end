@@ -1,50 +1,54 @@
 import { Router } from 'express';
-import { productController } from '../controllers/product.controller';
-import { validate } from '../middlewares/validate';
-import { authenticate } from '../middlewares/authenticate';
-import { requireAdmin } from '../middlewares/requireAdmin';
+import { productImageController } from '../../controllers/productImage.controller';
+import { validate } from '../../middlewares/validate';
+import { authenticate } from '../../middlewares/authenticate';
+import { requireAdmin } from '../../middlewares/requireAdmin';
 import {
-  createProductSchema,
-  listProductsQuerySchema,
-  productIdParamSchema,
-  updateProductSchema,
-} from '../validators/product.validator';
-import productImageRoutes from './productImage.routes';
-import productSpecificationRoutes from './productSpecification.routes';
+  createProductImageSchema,
+  productIdOnlyParamSchema,
+  productImageParamSchema,
+  updateProductImageSchema,
+} from '../../validators/productImage.validator';
 
-const router = Router();
+/** mergeParams: true — mesmo motivo já documentado em userCompany.routes.ts. */
+const router = Router({ mergeParams: true });
 
 /**
  * @openapi
  * tags:
- *   name: Products
- *   description: Catálogo de produtos
+ *   name: Product Images
+ *   description: Imagens associadas a um produto
  */
 
 /**
  * @openapi
- * /api/products:
+ * /api/v1/products/{productId}/images:
  *   post:
- *     tags: [Products]
- *     summary: Cria um novo produto (apenas administradores)
+ *     tags: [Product Images]
+ *     summary: 'Adiciona uma imagem a um produto (apenas administradores)'
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema: { type: string, format: uuid }
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreateProductInput'
+ *             $ref: '#/components/schemas/CreateProductImageInput'
  *     responses:
  *       201:
- *         description: Produto criado com sucesso.
+ *         description: Imagem criada com sucesso.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/Product' }
+ *                 data: { $ref: '#/components/schemas/ProductImage' }
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -58,7 +62,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Categoria não encontrada.
+ *         description: Produto não encontrado.
  *         content:
  *           application/json:
  *             schema:
@@ -74,66 +78,34 @@ router.post(
   '/',
   authenticate,
   requireAdmin,
-  validate({ body: createProductSchema }),
-  productController.create
+  validate({ params: productIdOnlyParamSchema, body: createProductImageSchema }),
+  productImageController.create
 );
 
 /**
  * @openapi
- * /api/products:
+ * /api/v1/products/{productId}/images:
  *   get:
- *     tags: [Products]
- *     summary: Lista produtos paginados, com filtros opcionais (público)
- *     parameters:
- *       - in: query
- *         name: page
- *         schema: { type: integer, default: 1 }
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 20, maximum: 100 }
- *       - in: query
- *         name: categoryId
- *         schema: { type: string, format: uuid }
- *       - in: query
- *         name: status
- *         schema: { type: string, enum: [active, inactive, out_of_stock] }
- *     responses:
- *       200:
- *         description: Lista paginada de produtos.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status: { type: string, example: success }
- *                 data:
- *                   type: array
- *                   items: { $ref: '#/components/schemas/Product' }
- *                 pagination: { $ref: '#/components/schemas/Pagination' }
- */
-router.get('/', validate({ query: listProductsQuerySchema }), productController.findAll);
-
-/**
- * @openapi
- * /api/products/{id}:
- *   get:
- *     tags: [Products]
- *     summary: Busca um produto pelo id (público)
+ *     tags: [Product Images]
+ *     summary: 'Lista as imagens de um produto, ordenadas por displayOrder (público)'
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: productId
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Produto encontrado.
+ *         description: Lista de imagens.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/Product' }
+ *                 count: { type: integer, example: 3 }
+ *                 data:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/ProductImage' }
  *       404:
  *         description: Produto não encontrado.
  *         content:
@@ -141,17 +113,21 @@ router.get('/', validate({ query: listProductsQuerySchema }), productController.
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id', validate({ params: productIdParamSchema }), productController.findById);
+router.get('/', validate({ params: productIdOnlyParamSchema }), productImageController.findAll);
 
 /**
  * @openapi
- * /api/products/{id}:
+ * /api/v1/products/{productId}/images/{id}:
  *   patch:
- *     tags: [Products]
- *     summary: Atualiza parcialmente um produto (apenas administradores)
+ *     tags: [Product Images]
+ *     summary: 'Atualiza uma imagem (apenas administradores)'
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema: { type: string, format: uuid }
  *       - in: path
  *         name: id
  *         required: true
@@ -161,17 +137,17 @@ router.get('/:id', validate({ params: productIdParamSchema }), productController
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateProductInput'
+ *             $ref: '#/components/schemas/UpdateProductImageInput'
  *     responses:
  *       200:
- *         description: Produto atualizado.
+ *         description: Imagem atualizada.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/Product' }
+ *                 data: { $ref: '#/components/schemas/ProductImage' }
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -185,7 +161,7 @@ router.get('/:id', validate({ params: productIdParamSchema }), productController
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Produto ou categoria não encontrados.
+ *         description: Imagem não encontrada.
  *         content:
  *           application/json:
  *             schema:
@@ -201,26 +177,30 @@ router.patch(
   '/:id',
   authenticate,
   requireAdmin,
-  validate({ params: productIdParamSchema, body: updateProductSchema }),
-  productController.update
+  validate({ params: productImageParamSchema, body: updateProductImageSchema }),
+  productImageController.update
 );
 
 /**
  * @openapi
- * /api/products/{id}:
+ * /api/v1/products/{productId}/images/{id}:
  *   delete:
- *     tags: [Products]
- *     summary: Remove um produto (apenas administradores)
+ *     tags: [Product Images]
+ *     summary: 'Remove uma imagem (apenas administradores)'
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema: { type: string, format: uuid }
  *       - in: path
  *         name: id
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       204:
- *         description: Produto removido com sucesso (sem conteúdo).
+ *         description: Imagem removida com sucesso (sem conteúdo).
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -234,13 +214,7 @@ router.patch(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Produto não encontrado.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       409:
- *         description: Produto referenciado por carrinhos ou pedidos existentes.
+ *         description: Imagem não encontrada.
  *         content:
  *           application/json:
  *             schema:
@@ -250,11 +224,8 @@ router.delete(
   '/:id',
   authenticate,
   requireAdmin,
-  validate({ params: productIdParamSchema }),
-  productController.remove
+  validate({ params: productImageParamSchema }),
+  productImageController.remove
 );
-
-router.use('/:productId/images', productImageRoutes);
-router.use('/:productId/specifications', productSpecificationRoutes);
 
 export default router;

@@ -1,8 +1,8 @@
 import { Router, type RequestHandler } from 'express';
-import { authController } from '../controllers/auth.controller';
-import { authLimiter } from '../middlewares/authLimiter';
-import { validate } from '../middlewares/validate';
-import { loginSchema, refreshTokenSchema, registerSchema } from '../validators/auth.validator';
+import { authController } from '../../controllers/auth.controller';
+import { authLimiter } from '../../middlewares/authLimiter';
+import { validate } from '../../middlewares/validate';
+import { loginSchema, refreshTokenSchema, registerSchema } from '../../validators/auth.validator';
 
 const router = Router();
 
@@ -15,7 +15,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/auth/register:
+ * /api/v1/auth/register:
  *   post:
  *     tags: [Auth]
  *     summary: Regista um novo utilizador (conta pessoal)
@@ -52,7 +52,7 @@ router.post('/register', validate({ body: registerSchema }), authController.regi
 
 /**
  * @openapi
- * /api/auth/login:
+ * /api/v1/auth/login:
  *   post:
  *     tags: [Auth]
  *     summary: Autentica um utilizador e emite tokens de acesso
@@ -98,7 +98,7 @@ router.post(
 
 /**
  * @openapi
- * /api/auth/refresh:
+ * /api/v1/auth/refresh:
  *   post:
  *     tags: [Auth]
  *     summary: Troca um refresh token válido por um novo par de tokens
@@ -129,7 +129,7 @@ router.post('/refresh', validate({ body: refreshTokenSchema }), authController.r
 
 /**
  * @openapi
- * /api/auth/logout:
+ * /api/v1/auth/logout:
  *   post:
  *     tags: [Auth]
  *     summary: Encerra a sessão associada ao refresh token enviado

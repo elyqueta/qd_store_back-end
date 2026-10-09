@@ -1,54 +1,51 @@
 import { Router } from 'express';
-import { productImageController } from '../controllers/productImage.controller';
-import { validate } from '../middlewares/validate';
-import { authenticate } from '../middlewares/authenticate';
-import { requireAdmin } from '../middlewares/requireAdmin';
+import { categoryController } from '../../controllers/category.controller';
+import { validate } from '../../middlewares/validate';
+import { authenticate } from '../../middlewares/authenticate';
+import { requireAdmin } from '../../middlewares/requireAdmin';
 import {
-  createProductImageSchema,
-  productIdOnlyParamSchema,
-  productImageParamSchema,
-  updateProductImageSchema,
-} from '../validators/productImage.validator';
+  categoryIdParamSchema,
+  createCategorySchema,
+  updateCategorySchema,
+} from '../../validators/category.validator';
 
-/** mergeParams: true — mesmo motivo já documentado em userCompany.routes.ts. */
-const router = Router({ mergeParams: true });
+const router = Router();
 
 /**
  * @openapi
  * tags:
- *   name: Product Images
- *   description: Imagens associadas a um produto
+ *   name: Categories
+ *   description: Gestão de categorias de produtos
  */
 
 /**
  * @openapi
- * /api/products/{productId}/images:
+ * /api/v1/categories:
  *   post:
- *     tags: [Product Images]
- *     summary: 'Adiciona uma imagem a um produto (apenas administradores)'
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: productId
- *         required: true
- *         schema: { type: string, format: uuid }
+ *     tags: [Categories]
+ *     summary: Cria uma nova categoria
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreateProductImageInput'
+ *             $ref: '#/components/schemas/CreateCategoryInput'
  *     responses:
  *       201:
- *         description: Imagem criada com sucesso.
+ *         description: Categoria criada com sucesso.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/ProductImage' }
+ *                 data: { $ref: '#/components/schemas/Category' }
+ *       409:
+ *         description: Já existe uma categoria com o slug gerado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -61,14 +58,8 @@ const router = Router({ mergeParams: true });
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *       404:
- *         description: Produto não encontrado.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  *       422:
- *         description: Dados inválidos.
+ *         description: 'Dados inválidos (ex: label ausente ou vazio).'
  *         content:
  *           application/json:
  *             schema:
@@ -78,24 +69,19 @@ router.post(
   '/',
   authenticate,
   requireAdmin,
-  validate({ params: productIdOnlyParamSchema, body: createProductImageSchema }),
-  productImageController.create
+  validate({ body: createCategorySchema }),
+  categoryController.create
 );
 
 /**
  * @openapi
- * /api/products/{productId}/images:
+ * /api/v1/categories:
  *   get:
- *     tags: [Product Images]
- *     summary: 'Lista as imagens de um produto, ordenadas por displayOrder (público)'
- *     parameters:
- *       - in: path
- *         name: productId
- *         required: true
- *         schema: { type: string, format: uuid }
+ *     tags: [Categories]
+ *     summary: Lista todas as categorias, ordenadas por label
  *     responses:
  *       200:
- *         description: Lista de imagens.
+ *         description: Lista de categorias.
  *         content:
  *           application/json:
  *             schema:
@@ -105,29 +91,47 @@ router.post(
  *                 count: { type: integer, example: 3 }
  *                 data:
  *                   type: array
- *                   items: { $ref: '#/components/schemas/ProductImage' }
+ *                   items: { $ref: '#/components/schemas/Category' }
+ */
+router.get('/', categoryController.findAll);
+
+/**
+ * @openapi
+ * /api/v1/categories/{id}:
+ *   get:
+ *     tags: [Categories]
+ *     summary: Busca uma categoria pelo id
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Categoria encontrada.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: success }
+ *                 data: { $ref: '#/components/schemas/Category' }
  *       404:
- *         description: Produto não encontrado.
+ *         description: Categoria não encontrada.
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/', validate({ params: productIdOnlyParamSchema }), productImageController.findAll);
+router.get('/:id', validate({ params: categoryIdParamSchema }), categoryController.findById);
 
 /**
  * @openapi
- * /api/products/{productId}/images/{id}:
+ * /api/v1/categories/{id}:
  *   patch:
- *     tags: [Product Images]
- *     summary: 'Atualiza uma imagem (apenas administradores)'
- *     security:
- *       - bearerAuth: []
+ *     tags: [Categories]
+ *     summary: Atualiza parcialmente uma categoria
  *     parameters:
- *       - in: path
- *         name: productId
- *         required: true
- *         schema: { type: string, format: uuid }
  *       - in: path
  *         name: id
  *         required: true
@@ -137,17 +141,17 @@ router.get('/', validate({ params: productIdOnlyParamSchema }), productImageCont
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateProductImageInput'
+ *             $ref: '#/components/schemas/UpdateCategoryInput'
  *     responses:
  *       200:
- *         description: Imagem atualizada.
+ *         description: Categoria atualizada.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/ProductImage' }
+ *                 data: { $ref: '#/components/schemas/Category' }
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -161,7 +165,7 @@ router.get('/', validate({ params: productIdOnlyParamSchema }), productImageCont
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Imagem não encontrada.
+ *         description: Categoria não encontrada.
  *         content:
  *           application/json:
  *             schema:
@@ -177,30 +181,24 @@ router.patch(
   '/:id',
   authenticate,
   requireAdmin,
-  validate({ params: productImageParamSchema, body: updateProductImageSchema }),
-  productImageController.update
+  validate({ params: categoryIdParamSchema, body: updateCategorySchema }),
+  categoryController.update
 );
 
 /**
  * @openapi
- * /api/products/{productId}/images/{id}:
+ * /api/v1/categories/{id}:
  *   delete:
- *     tags: [Product Images]
- *     summary: 'Remove uma imagem (apenas administradores)'
- *     security:
- *       - bearerAuth: []
+ *     tags: [Categories]
+ *     summary: Remove uma categoria
  *     parameters:
- *       - in: path
- *         name: productId
- *         required: true
- *         schema: { type: string, format: uuid }
  *       - in: path
  *         name: id
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       204:
- *         description: Imagem removida com sucesso (sem conteúdo).
+ *         description: Categoria removida com sucesso (sem conteúdo).
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -214,7 +212,13 @@ router.patch(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Imagem não encontrada.
+ *         description: Categoria não encontrada.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Categoria possui produtos associados.
  *         content:
  *           application/json:
  *             schema:
@@ -224,8 +228,8 @@ router.delete(
   '/:id',
   authenticate,
   requireAdmin,
-  validate({ params: productImageParamSchema }),
-  productImageController.remove
+  validate({ params: categoryIdParamSchema }),
+  categoryController.remove
 );
 
 export default router;

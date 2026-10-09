@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { adminController } from '../controllers/admin.controller';
-import { authenticate } from '../middlewares/authenticate';
-import { requireRole } from '../middlewares/requireRole';
+import { adminController } from '../../controllers/admin.controller';
+import { authenticate } from '../../middlewares/authenticate';
+import { requireRole } from '../../middlewares/requireRole';
 
 const router = Router();
 
@@ -14,7 +14,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/admin/companies:
+ * /api/v1/admin/companies:
  *   get:
  *     tags: [Admin]
  *     summary: Lista todas as empresas e os utilizadores vinculados a cada uma

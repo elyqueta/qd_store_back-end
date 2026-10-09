@@ -1,0 +1,19 @@
+# Nunca enviar o .env para o build context — as variáveis do
+# container vêm exclusivamente do docker-compose.yml.
+.env
+.env.local
+.env.*.local
+
+node_modules
+dist
+.git
+coverage
+*.log
+
+.kilo
+.vscode
+.idea
+
+Dockerfile
+docker-compose*.yml
+.dockerignore

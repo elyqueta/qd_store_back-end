@@ -84,6 +84,42 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
           type: { type: 'string', enum: ['standard', 'express', 'corporate', 'pickup'] },
         },
       },
+      /** Schemas do domínio PAYMENT_METHOD, o catálogo de métodos de pagamento disponíveis. */
+      PaymentMethod: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          name: { type: 'string', example: 'Multicaixa Express' },
+          type: {
+            type: 'string',
+            enum: ['multicaixa_express', 'multicaixa_reference', 'bank_transfer'],
+          },
+          isActive: { type: 'boolean', example: true },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      CreatePaymentMethodInput: {
+        type: 'object',
+        required: ['name', 'type'],
+        properties: {
+          name: { type: 'string', maxLength: 100, example: 'Multicaixa Express' },
+          type: {
+            type: 'string',
+            enum: ['multicaixa_express', 'multicaixa_reference', 'bank_transfer'],
+          },
+        },
+      },
+      UpdatePaymentMethodInput: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', maxLength: 100, example: 'Multicaixa Express' },
+          type: {
+            type: 'string',
+            enum: ['multicaixa_express', 'multicaixa_reference', 'bank_transfer'],
+          },
+        },
+      },
       ErrorResponse: {
         type: 'object',
         properties: {
@@ -480,7 +516,15 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
 
 const options: swaggerJsdoc.Options = {
   definition: swaggerDefinition,
-  apis: [path.join(__dirname, '../routes/*.routes.ts')],
+  // Dois padrões, um por modo de execução: em desenvolvimento (tsx),
+  // __dirname aponta para src/config e os ficheiros são .ts; na imagem
+  // Docker compilada, __dirname aponta para dist/config e os ficheiros
+  // são .js. Sem o padrão .js, o spec ficaria vazio no container.
+  // O subdirectório v1/ acompanha o versionamento das rotas.
+  apis: [
+    path.join(__dirname, '../routes/v1/*.routes.ts'),
+    path.join(__dirname, '../routes/v1/*.routes.js'),
+  ],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);

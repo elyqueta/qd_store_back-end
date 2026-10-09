@@ -1,14 +1,14 @@
 import { Router } from 'express';
-import { companyController } from '../controllers/company.controller';
-import { authenticate } from '../middlewares/authenticate';
-import { validate } from '../middlewares/validate';
-import { requireAdmin } from '../middlewares/requireAdmin';
-import { requireAdminOrCompanyOwner } from '../middlewares/requireAdminOrCompanyOwner';
+import { companyController } from '../../controllers/company.controller';
+import { authenticate } from '../../middlewares/authenticate';
+import { validate } from '../../middlewares/validate';
+import { requireAdmin } from '../../middlewares/requireAdmin';
+import { requireAdminOrCompanyOwner } from '../../middlewares/requireAdminOrCompanyOwner';
 import {
   companyIdParamSchema,
   createCompanySchema,
   updateCompanySchema,
-} from '../validators/company.validator';
+} from '../../validators/company.validator';
 import userCompanyRoutes from './userCompany.routes';
 
 const router = Router();
@@ -30,7 +30,7 @@ router.use(authenticate);
 
 /**
  * @openapi
- * /api/companies:
+ * /api/v1/companies:
  *   post:
  *     tags: [Companies]
  *     summary: Regista uma nova empresa (conta B2B)
@@ -75,7 +75,7 @@ router.post('/', validate({ body: createCompanySchema }), companyController.crea
 
 /**
  * @openapi
- * /api/companies:
+ * /api/v1/companies:
  *   get:
  *     tags: [Companies]
  *     summary: Lista todas as empresas
@@ -99,7 +99,7 @@ router.get('/', requireAdmin, companyController.findAll);
 
 /**
  * @openapi
- * /api/companies/{id}:
+ * /api/v1/companies/{id}:
  *   get:
  *     tags: [Companies]
  *     summary: Busca uma empresa pelo id
@@ -131,7 +131,7 @@ router.get('/:id', validate({ params: companyIdParamSchema }), companyController
 
 /**
  * @openapi
- * /api/companies/{id}:
+ * /api/v1/companies/{id}:
  *   patch:
  *     tags: [Companies]
  *     summary: Atualiza parcialmente uma empresa
@@ -192,7 +192,7 @@ router.patch(
 
 /**
  * @openapi
- * /api/companies/{id}:
+ * /api/v1/companies/{id}:
  *   delete:
  *     tags: [Companies]
  *     summary: Desativa uma empresa (soft delete)

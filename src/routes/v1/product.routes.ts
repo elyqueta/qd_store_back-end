@@ -1,53 +1,50 @@
 import { Router } from 'express';
-import { productSpecificationController } from '../controllers/productSpecification.controller';
-import { validate } from '../middlewares/validate';
-import { authenticate } from '../middlewares/authenticate';
-import { requireAdmin } from '../middlewares/requireAdmin';
+import { productController } from '../../controllers/product.controller';
+import { validate } from '../../middlewares/validate';
+import { authenticate } from '../../middlewares/authenticate';
+import { requireAdmin } from '../../middlewares/requireAdmin';
 import {
-  createProductSpecificationSchema,
-  productIdOnlyParamSchema,
-  productSpecificationParamSchema,
-  updateProductSpecificationSchema,
-} from '../validators/productSpecification.validator';
+  createProductSchema,
+  listProductsQuerySchema,
+  productIdParamSchema,
+  updateProductSchema,
+} from '../../validators/product.validator';
+import productImageRoutes from './productImage.routes';
+import productSpecificationRoutes from './productSpecification.routes';
 
-const router = Router({ mergeParams: true });
+const router = Router();
 
 /**
  * @openapi
  * tags:
- *   name: Product Specifications
- *   description: Especificações técnicas (chave/valor) associadas a um produto
+ *   name: Products
+ *   description: Catálogo de produtos
  */
 
 /**
  * @openapi
- * /api/products/{productId}/specifications:
+ * /api/v1/products:
  *   post:
- *     tags: [Product Specifications]
- *     summary: 'Adiciona uma especificação a um produto (apenas administradores)'
+ *     tags: [Products]
+ *     summary: Cria um novo produto (apenas administradores)
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: productId
- *         required: true
- *         schema: { type: string, format: uuid }
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreateProductSpecificationInput'
+ *             $ref: '#/components/schemas/CreateProductInput'
  *     responses:
  *       201:
- *         description: Especificação criada com sucesso.
+ *         description: Produto criado com sucesso.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/ProductSpecification' }
+ *                 data: { $ref: '#/components/schemas/Product' }
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -61,7 +58,7 @@ const router = Router({ mergeParams: true });
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Produto não encontrado.
+ *         description: Categoria não encontrada.
  *         content:
  *           application/json:
  *             schema:
@@ -77,34 +74,66 @@ router.post(
   '/',
   authenticate,
   requireAdmin,
-  validate({ params: productIdOnlyParamSchema, body: createProductSpecificationSchema }),
-  productSpecificationController.create
+  validate({ body: createProductSchema }),
+  productController.create
 );
 
 /**
  * @openapi
- * /api/products/{productId}/specifications:
+ * /api/v1/products:
  *   get:
- *     tags: [Product Specifications]
- *     summary: 'Lista as especificações de um produto (público)'
+ *     tags: [Products]
+ *     summary: Lista produtos paginados, com filtros opcionais (público)
  *     parameters:
- *       - in: path
- *         name: productId
- *         required: true
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20, maximum: 100 }
+ *       - in: query
+ *         name: categoryId
  *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [active, inactive, out_of_stock] }
  *     responses:
  *       200:
- *         description: Lista de especificações.
+ *         description: Lista paginada de produtos.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 count: { type: integer, example: 5 }
  *                 data:
  *                   type: array
- *                   items: { $ref: '#/components/schemas/ProductSpecification' }
+ *                   items: { $ref: '#/components/schemas/Product' }
+ *                 pagination: { $ref: '#/components/schemas/Pagination' }
+ */
+router.get('/', validate({ query: listProductsQuerySchema }), productController.findAll);
+
+/**
+ * @openapi
+ * /api/v1/products/{id}:
+ *   get:
+ *     tags: [Products]
+ *     summary: Busca um produto pelo id (público)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Produto encontrado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: success }
+ *                 data: { $ref: '#/components/schemas/Product' }
  *       404:
  *         description: Produto não encontrado.
  *         content:
@@ -112,25 +141,17 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get(
-  '/',
-  validate({ params: productIdOnlyParamSchema }),
-  productSpecificationController.findAll
-);
+router.get('/:id', validate({ params: productIdParamSchema }), productController.findById);
 
 /**
  * @openapi
- * /api/products/{productId}/specifications/{id}:
+ * /api/v1/products/{id}:
  *   patch:
- *     tags: [Product Specifications]
- *     summary: 'Atualiza uma especificação (apenas administradores)'
+ *     tags: [Products]
+ *     summary: Atualiza parcialmente um produto (apenas administradores)
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: productId
- *         required: true
- *         schema: { type: string, format: uuid }
  *       - in: path
  *         name: id
  *         required: true
@@ -140,17 +161,17 @@ router.get(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateProductSpecificationInput'
+ *             $ref: '#/components/schemas/UpdateProductInput'
  *     responses:
  *       200:
- *         description: Especificação atualizada.
+ *         description: Produto atualizado.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/ProductSpecification' }
+ *                 data: { $ref: '#/components/schemas/Product' }
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -164,7 +185,7 @@ router.get(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Especificação não encontrada.
+ *         description: Produto ou categoria não encontrados.
  *         content:
  *           application/json:
  *             schema:
@@ -180,30 +201,26 @@ router.patch(
   '/:id',
   authenticate,
   requireAdmin,
-  validate({ params: productSpecificationParamSchema, body: updateProductSpecificationSchema }),
-  productSpecificationController.update
+  validate({ params: productIdParamSchema, body: updateProductSchema }),
+  productController.update
 );
 
 /**
  * @openapi
- * /api/products/{productId}/specifications/{id}:
+ * /api/v1/products/{id}:
  *   delete:
- *     tags: [Product Specifications]
- *     summary: 'Remove uma especificação (apenas administradores)'
+ *     tags: [Products]
+ *     summary: Remove um produto (apenas administradores)
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: productId
- *         required: true
- *         schema: { type: string, format: uuid }
  *       - in: path
  *         name: id
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       204:
- *         description: Especificação removida com sucesso (sem conteúdo).
+ *         description: Produto removido com sucesso (sem conteúdo).
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -217,7 +234,13 @@ router.patch(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Especificação não encontrada.
+ *         description: Produto não encontrado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Produto referenciado por carrinhos ou pedidos existentes.
  *         content:
  *           application/json:
  *             schema:
@@ -227,8 +250,11 @@ router.delete(
   '/:id',
   authenticate,
   requireAdmin,
-  validate({ params: productSpecificationParamSchema }),
-  productSpecificationController.remove
+  validate({ params: productIdParamSchema }),
+  productController.remove
 );
+
+router.use('/:productId/images', productImageRoutes);
+router.use('/:productId/specifications', productSpecificationRoutes);
 
 export default router;

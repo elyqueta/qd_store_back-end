@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { addressController } from '../controllers/address.controller';
-import { authenticate } from '../middlewares/authenticate';
-import { validate } from '../middlewares/validate';
+import { addressController } from '../../controllers/address.controller';
+import { authenticate } from '../../middlewares/authenticate';
+import { validate } from '../../middlewares/validate';
 import {
   addressIdParamSchema,
   createAddressSchema,
   updateAddressSchema,
-} from '../validators/address.validator';
+} from '../../validators/address.validator';
 
 const router = Router();
 
@@ -21,7 +21,7 @@ router.use(authenticate);
 
 /**
  * @openapi
- * /api/addresses:
+ * /api/v1/addresses:
  *   post:
  *     tags: [Addresses]
  *     summary: Cria um novo endereço para o utilizador autenticado
@@ -68,7 +68,7 @@ router.post('/', validate({ body: createAddressSchema }), addressController.crea
 
 /**
  * @openapi
- * /api/addresses:
+ * /api/v1/addresses:
  *   get:
  *     tags: [Addresses]
  *     summary: Lista os endereços do utilizador autenticado
@@ -99,7 +99,7 @@ router.get('/', addressController.findAll);
 
 /**
  * @openapi
- * /api/addresses/{id}:
+ * /api/v1/addresses/{id}:
  *   get:
  *     tags: [Addresses]
  *     summary: Busca um endereço do utilizador autenticado pelo id
@@ -140,7 +140,7 @@ router.get('/:id', validate({ params: addressIdParamSchema }), addressController
 
 /**
  * @openapi
- * /api/addresses/{id}:
+ * /api/v1/addresses/{id}:
  *   patch:
  *     tags: [Addresses]
  *     summary: Atualiza parcialmente um endereço
@@ -199,7 +199,7 @@ router.patch(
 
 /**
  * @openapi
- * /api/addresses/{id}/default:
+ * /api/v1/addresses/{id}/default:
  *   patch:
  *     tags: [Addresses]
  *     summary: Define este endereço como o padrão do utilizador
@@ -246,7 +246,7 @@ router.patch(
 
 /**
  * @openapi
- * /api/addresses/{id}:
+ * /api/v1/addresses/{id}:
  *   delete:
  *     tags: [Addresses]
  *     summary: Remove um endereço (remoção física)

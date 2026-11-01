@@ -35,6 +35,8 @@ const envSchema = z.object({
     .string({ error: 'CORS_ORIGIN é obrigatória' })
     .min(1, 'CORS_ORIGIN não pode ser vazia'),
 
+  CORS_ALLOW_LOCALHOST: z.stringbool().default(false),
+
   RATE_LIMIT_WINDOW_MS: z.coerce
     .number({ error: 'RATE_LIMIT_WINDOW_MS deve ser um número' })
     .int()

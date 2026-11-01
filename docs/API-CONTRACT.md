@@ -289,6 +289,7 @@ configurados). Os exemplos assumem um access token válido.
 | `PORT` | Porta HTTP da aplicação. | `3000` |
 | `DATABASE_URL` | URL PostgreSQL obrigatória. | — |
 | `CORS_ORIGIN` | Origens autorizadas, obrigatória. | — |
+| `CORS_ALLOW_LOCALHOST` | Permite qualquer porta em origens de loopback, apenas em `development`. | `false` |
 | `TRUST_PROXY` | Saltos de proxy confiáveis; `0` local, `1` para um proxy na cloud. | `0` |
 | `RATE_LIMIT_WINDOW_MS` | Janela do limitador global da API em milissegundos. | `900000` |
 | `RATE_LIMIT_MAX` | Pedidos por janela e IP. | `100` |

@@ -2,6 +2,19 @@ import { CorsOptions } from 'cors';
 import { ForbiddenError } from '../errors';
 import { env } from './env';
 
+function isLocalhostOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return (
+      url.origin === origin &&
+      ['http:', 'https:'].includes(url.protocol) &&
+      ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Por que centralizar as opções de CORS aqui, e não escrever
  * `app.use(cors({...}))` direto em app.ts?
@@ -38,6 +51,15 @@ export const corsOptions: CorsOptions = {
     }
 
     if (env.CORS_ORIGIN.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    if (
+      env.NODE_ENV === 'development' &&
+      env.CORS_ALLOW_LOCALHOST &&
+      isLocalhostOrigin(origin)
+    ) {
       callback(null, true);
       return;
     }

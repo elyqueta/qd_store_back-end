@@ -22,8 +22,8 @@ API REST do QD Solutions — e-commerce de tecnologia para Angola.
    cp .env.example .env
    ```
 
-   Revê `DATABASE_URL`, `CORS_ORIGIN` e `JWT_SECRET` no `.env`. O exemplo destina-se a
-   desenvolvimento local.
+   Revê `DATABASE_URL`, `CORS_ORIGIN`, `CORS_ALLOW_LOCALHOST` e `JWT_SECRET`
+   no `.env`. O exemplo destina-se a desenvolvimento local.
 2. Iniciar o PostgreSQL:
 
    ```bash
@@ -174,6 +174,9 @@ pai, herdando o prefixo.
 - **Variáveis de ambiente:** a API recebe tudo via `environment:` do
   `docker-compose.yml`. O `.env` local **não** é copiado para a imagem
   (ver `.dockerignore`).
+- **CORS local:** `CORS_ALLOW_LOCALHOST=true` permite qualquer porta em
+  origens `localhost`, `127.0.0.1` e `[::1]` apenas em `development`.
+  Mantém-se `false` por omissão; o Compose publica a API apenas em loopback.
 - **JWT_SECRET:** o compose tem um default de desenvolvimento. Em
   produção, exporte antes de subir:
 

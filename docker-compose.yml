@@ -39,6 +39,7 @@ services:
       # fonte da documentação.
       NODE_ENV: development
       PORT: "1914"
+      CORS_ALLOW_LOCALHOST: ${CORS_ALLOW_LOCALHOST:-false}
       # "postgres" é o hostname do serviço na rede do Compose; a 5432
       # é a porta INTERNA do container (não a 5433 publicada no host).
       DATABASE_URL: postgres://qd_user:qd_password@postgres:5432/qd_store

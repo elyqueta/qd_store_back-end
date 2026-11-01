@@ -1,5 +1,6 @@
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { pool } from './database/pool';
 import { env } from './config/env';
 import { corsOptions } from './config/cors';
@@ -7,18 +8,30 @@ import { swaggerSpec } from './config/swagger';
 import { asyncHandler } from './middlewares/asyncHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
 import { errorHandler } from './middlewares/errorHandler';
-import companyRoutes from './routes/company.routes';
-import categoryRoutes from './routes/category.routes';
-import authRoutes from './routes/auth.routes';
-import adminRoutes from './routes/admin.routes';
-import locationRoutes from './routes/location.routes';
-import addressRoutes from './routes/address.routes';
-import productRoutes from './routes/product.routes';
-import deliveryTypeRoutes from './routes/deliveryType.routes';
+import { apiLimiter } from './middlewares/rateLimiter';
+import v1Routes from './routes/v1';
 
 const app: Application = express();
 
+app.set('trust proxy', 1);
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        // A página de docs (/api-docs) carrega o Scalar UI via CDN;
+        // permitir esse domínio em script-src sem abrir geral.
+        scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
+      },
+    },
+  })
+);
 app.use(cors(corsOptions));
+
+// Rate limit só nas rotas da API (não em /health, para não quebrar
+// orchestrators que batem no health check em curto intervalo).
+app.use('/api/v1', apiLimiter);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -94,29 +107,19 @@ app.get(
 );
 
 /**
- * Montagem das rotas da API.
+ * Montagem das rotas da API, versionadas em /api/v1.
  *
- * Cada linha abaixo aparece EXATAMENTE uma vez — router.use() é uma
- * operação de REGISTO no middleware stack do Express, não uma
- * declaração idempotente. Montar o mesmo router duas vezes no mesmo
- * prefixo faz o Express avaliar essa cadeia de middlewares duas
- * vezes por requisição (sem erro visível hoje, mas um risco real
- * assim que qualquer um destes routers ganhar um middleware que não
- * finaliza a resposta, como um `authenticate` no topo).
+ * O versionamento vive em src/routes/v1/index.ts: aquele router monta
+ * os domínios (auth, categories, companies...) sem prefixo próprio, e
+ * é montado AQUI sob /api/v1. Uma futura v2 (src/routes/v2/, mesmo
+ * formato) encaixa-se com uma única linha nova, sem tocar na v1 —
+ * clientes antigos continuam servidos sem quebra de contrato.
  *
- * userCompanyRoutes NÃO aparece aqui de propósito: é um router
- * aninhado, montado dentro de company.routes.ts via
- * `router.use('/:companyId/users', userCompanyRoutes)`, herdando o
- * prefixo /api/companies/:companyId através de mergeParams: true.
+ * /health fica FORA do prefixo versionado de propósito: health check
+ * de orquestrador (Docker, Kubernetes) não deve quebrar a cada nova
+ * versão da API.
  */
-app.use('/api/auth', authRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/companies', companyRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/locations', locationRoutes);
-app.use('/api/addresses', addressRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/delivery-types', deliveryTypeRoutes);
+app.use('/api/v1', v1Routes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

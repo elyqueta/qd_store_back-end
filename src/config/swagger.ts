@@ -84,6 +84,42 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
           type: { type: 'string', enum: ['standard', 'express', 'corporate', 'pickup'] },
         },
       },
+      /** Schemas do domínio PAYMENT_METHOD, o catálogo de métodos de pagamento disponíveis. */
+      PaymentMethod: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          name: { type: 'string', example: 'Multicaixa Express' },
+          type: {
+            type: 'string',
+            enum: ['multicaixa_express', 'multicaixa_reference', 'bank_transfer'],
+          },
+          isActive: { type: 'boolean', example: true },
+          createdAt: { type: 'string', format: 'date-time' },
+          updatedAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      CreatePaymentMethodInput: {
+        type: 'object',
+        required: ['name', 'type'],
+        properties: {
+          name: { type: 'string', maxLength: 100, example: 'Multicaixa Express' },
+          type: {
+            type: 'string',
+            enum: ['multicaixa_express', 'multicaixa_reference', 'bank_transfer'],
+          },
+        },
+      },
+      UpdatePaymentMethodInput: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', maxLength: 100, example: 'Multicaixa Express' },
+          type: {
+            type: 'string',
+            enum: ['multicaixa_express', 'multicaixa_reference', 'bank_transfer'],
+          },
+        },
+      },
       ErrorResponse: {
         type: 'object',
         properties: {
@@ -97,8 +133,9 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
         },
       },
       /**
-       * accountType agora inclui 'admin' — reflete AccountType em
-       * types/user.types.ts (ver 090_add_admin_account_type.sql).
+       * accountType é apenas 'personal' | 'business' (enum account_type
+       * do Postgres). 'admin' não é um tipo de conta — é um nível de
+       * acesso da plataforma, representado pelo campo `role`.
        */
       User: {
         type: 'object',
@@ -108,7 +145,8 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
           email: { type: 'string', format: 'email', example: 'joao@exemplo.co.ao' },
           phone: { type: 'string', example: '923456789' },
           nif: { type: 'string', nullable: true, example: '005123456LA042' },
-          accountType: { type: 'string', enum: ['personal', 'business', 'admin'] },
+          accountType: { type: 'string', enum: ['personal', 'business'] },
+          role: { type: 'string', enum: ['customer', 'admin'] },
           status: { type: 'string', enum: ['active', 'inactive', 'banned'] },
           deactivatedAt: { type: 'string', format: 'date-time', nullable: true },
           createdAt: { type: 'string', format: 'date-time' },
@@ -480,7 +518,15 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
 
 const options: swaggerJsdoc.Options = {
   definition: swaggerDefinition,
-  apis: [path.join(__dirname, '../routes/*.routes.ts')],
+  // Dois padrões, um por modo de execução: em desenvolvimento (tsx),
+  // __dirname aponta para src/config e os ficheiros são .ts; na imagem
+  // Docker compilada, __dirname aponta para dist/config e os ficheiros
+  // são .js. Sem o padrão .js, o spec ficaria vazio no container.
+  // O subdirectório v1/ acompanha o versionamento das rotas.
+  apis: [
+    path.join(__dirname, '../routes/v1/*.routes.ts'),
+    path.join(__dirname, '../routes/v1/*.routes.js'),
+  ],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);

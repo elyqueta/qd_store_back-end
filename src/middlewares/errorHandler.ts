@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { AppError } from '../errors';
+import { logger } from '../config/logger';
 
 /**
  * Formato padronizado de resposta de erro da API.
@@ -138,7 +139,7 @@ export function errorHandler(
   // mensagem ou stack trace ao cliente: isso poderia vazar detalhes
   // de implementação (nomes de tabelas, caminhos de arquivo, trechos
   // de query) que um atacante poderia explorar.
-  console.error('Erro inesperado não tratado:', err);
+  logger.error({ err }, 'Erro inesperado não tratado');
 
   const body: ErrorResponseBody = {
     status: 'error',

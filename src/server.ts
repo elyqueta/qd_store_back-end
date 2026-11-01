@@ -1,10 +1,10 @@
 import app from './app';
 import { env } from './config/env';
 import { closePool } from './database/pool';
+import { logger } from './config/logger';
 
 const server = app.listen(env.PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`QD Store Backend rodando em http://localhost:${env.PORT} [${env.NODE_ENV}]`);
+  logger.info(`QD Store Backend rodando em http://localhost:${env.PORT} [${env.NODE_ENV}]`);
 });
 
 /**
@@ -20,24 +20,22 @@ const server = app.listen(env.PORT, () => {
  * com .then()/.catch(), em vez de usar await dentro do callback.
  */
 function shutdown(signal: string): void {
-  // eslint-disable-next-line no-console
-  console.log(`\n${signal} recebido. Encerrando graciosamente...`);
+  logger.info(`${signal} recebido. Encerrando graciosamente...`);
 
   server.close((err) => {
     if (err) {
-      console.error('Erro ao fechar servidor HTTP:', err);
+      logger.error({ err }, 'Erro ao fechar servidor HTTP');
       process.exit(1);
       return;
     }
 
     closePool()
       .then(() => {
-        // eslint-disable-next-line no-console
-        console.log('Servidor e pool de conexões encerrados.');
+        logger.info('Servidor e pool de conexões encerrados.');
         process.exit(0);
       })
       .catch((closeErr: unknown) => {
-        console.error('Erro ao fechar pool de conexões:', closeErr);
+        logger.error({ err: closeErr }, 'Erro ao fechar pool de conexões');
         process.exit(1);
       });
   });

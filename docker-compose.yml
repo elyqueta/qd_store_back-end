@@ -7,8 +7,14 @@ services:
       POSTGRES_USER: qd_user
       POSTGRES_PASSWORD: qd_password
       POSTGRES_DB: qd_store
+    # Publicação em dual-stack: 127.0.0.1 (IPv4) e ::1 (IPv6). Sem a
+    # segunda entrada, clientes que resolvem "localhost" para ::1
+    # (Node 17+ verbatim, WSL, Windows, containers) falham com
+    # ECONNREFUSED ::1:1914 enquanto o browser funciona (Happy
+    # Eyeballs cai para IPv4).
     ports:
       - "127.0.0.1:5433:5432"
+      - "[::1]:5433:5432"
     volumes:
       - qd_store_postgres_data:/var/lib/postgresql/data
       - ../database:/database:ro
@@ -17,6 +23,48 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qd_store_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # development (e não production) para manter /api-docs activo
+      # dentro do container — os comentários JSDoc das rotas são a
+      # fonte da documentação.
+      NODE_ENV: development
+      PORT: "1914"
+      # "postgres" é o hostname do serviço na rede do Compose; a 5432
+      # é a porta INTERNA do container (não a 5433 publicada no host).
+      DATABASE_URL: postgres://qd_user:qd_password@postgres:5432/qd_store
+      CORS_ORIGIN: http://localhost:1914,http://localhost:5173,https://qd-store-one.vercel.app
+      RATE_LIMIT_WINDOW_MS: "900000"
+      RATE_LIMIT_MAX: "20"
+      # Default de desenvolvimento; em produção exporte JWT_SECRET no
+      # ambiente do host antes de subir.
+      JWT_SECRET: ${JWT_SECRET:-qd_store_dev_only_jwt_secret_mude_em_producao_2026}
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN_DAYS: "7"
+      BCRYPT_SALT_ROUNDS: "12"
+    ports:
+      - "127.0.0.1:1914:1914"
+      - "[::1]:1914:1914"
+    # Aplica as migrations pendentes antes de iniciar o servidor —
+    # node-pg-migrate lê a DATABASE_URL do ambiente acima.
+    command: ["sh", "-c", "npm run migrate:up && node dist/server.js"]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget --spider -q http://127.0.0.1:1914/health || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 volumes:
   qd_store_postgres_data:

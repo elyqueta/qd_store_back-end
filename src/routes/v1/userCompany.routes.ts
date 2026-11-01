@@ -1,14 +1,14 @@
 import { Router } from 'express';
-import { userCompanyController } from '../controllers/userCompany.controller';
-import { requireAdminOrCompanyMember } from '../middlewares/requireAdminOrCompanyMember';
-import { requireAdminOrCompanyOwner } from '../middlewares/requireAdminOrCompanyOwner';
-import { validate } from '../middlewares/validate';
+import { userCompanyController } from '../../controllers/userCompany.controller';
+import { requireAdminOrCompanyMember } from '../../middlewares/requireAdminOrCompanyMember';
+import { requireAdminOrCompanyOwner } from '../../middlewares/requireAdminOrCompanyOwner';
+import { validate } from '../../middlewares/validate';
 import {
   companyIdParamOnlySchema,
   createUserCompanySchema,
   updateUserCompanySchema,
   userCompanyParamSchema,
-} from '../validators/userCompany.validator';
+} from '../../validators/userCompany.validator';
 
 /**
  * mergeParams: true é obrigatório aqui — sem isso, este router (montado
@@ -27,7 +27,7 @@ const router = Router({ mergeParams: true });
 
 /**
  * @openapi
- * /api/companies/{companyId}/users:
+ * /api/v1/companies/{companyId}/users:
  *   post:
  *     tags: [Company Users]
  *     summary: Associa um utilizador a uma empresa
@@ -88,7 +88,7 @@ router.post(
 
 /**
  * @openapi
- * /api/companies/{companyId}/users:
+ * /api/v1/companies/{companyId}/users:
  *   get:
  *     tags: [Company Users]
  *     summary: Lista os utilizadores associados a uma empresa (admin ou membro da própria empresa)
@@ -140,7 +140,7 @@ router.get(
 
 /**
  * @openapi
- * /api/companies/{companyId}/users/{userId}:
+ * /api/v1/companies/{companyId}/users/{userId}:
  *   patch:
  *     tags: [Company Users]
  *     summary: Atualiza o cargo (role) de um utilizador numa empresa
@@ -199,7 +199,7 @@ router.patch(
 
 /**
  * @openapi
- * /api/companies/{companyId}/users/{userId}:
+ * /api/v1/companies/{companyId}/users/{userId}:
  *   delete:
  *     tags: [Company Users]
  *     summary: Remove a associação entre um utilizador e uma empresa

@@ -1,51 +1,53 @@
 import { Router } from 'express';
-import { categoryController } from '../controllers/category.controller';
-import { validate } from '../middlewares/validate';
-import { authenticate } from '../middlewares/authenticate';
-import { requireAdmin } from '../middlewares/requireAdmin';
+import { productSpecificationController } from '../../controllers/productSpecification.controller';
+import { validate } from '../../middlewares/validate';
+import { authenticate } from '../../middlewares/authenticate';
+import { requireAdmin } from '../../middlewares/requireAdmin';
 import {
-  categoryIdParamSchema,
-  createCategorySchema,
-  updateCategorySchema,
-} from '../validators/category.validator';
+  createProductSpecificationSchema,
+  productIdOnlyParamSchema,
+  productSpecificationParamSchema,
+  updateProductSpecificationSchema,
+} from '../../validators/productSpecification.validator';
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 /**
  * @openapi
  * tags:
- *   name: Categories
- *   description: Gestão de categorias de produtos
+ *   name: Product Specifications
+ *   description: Especificações técnicas (chave/valor) associadas a um produto
  */
 
 /**
  * @openapi
- * /api/categories:
+ * /api/v1/products/{productId}/specifications:
  *   post:
- *     tags: [Categories]
- *     summary: Cria uma nova categoria
+ *     tags: [Product Specifications]
+ *     summary: 'Adiciona uma especificação a um produto (apenas administradores)'
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema: { type: string, format: uuid }
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreateCategoryInput'
+ *             $ref: '#/components/schemas/CreateProductSpecificationInput'
  *     responses:
  *       201:
- *         description: Categoria criada com sucesso.
+ *         description: Especificação criada com sucesso.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/Category' }
- *       409:
- *         description: Já existe uma categoria com o slug gerado.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *                 data: { $ref: '#/components/schemas/ProductSpecification' }
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -58,8 +60,14 @@ const router = Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Produto não encontrado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       422:
- *         description: 'Dados inválidos (ex: label ausente ou vazio).'
+ *         description: Dados inválidos.
  *         content:
  *           application/json:
  *             schema:
@@ -69,69 +77,60 @@ router.post(
   '/',
   authenticate,
   requireAdmin,
-  validate({ body: createCategorySchema }),
-  categoryController.create
+  validate({ params: productIdOnlyParamSchema, body: createProductSpecificationSchema }),
+  productSpecificationController.create
 );
 
 /**
  * @openapi
- * /api/categories:
+ * /api/v1/products/{productId}/specifications:
  *   get:
- *     tags: [Categories]
- *     summary: Lista todas as categorias, ordenadas por label
- *     responses:
- *       200:
- *         description: Lista de categorias.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status: { type: string, example: success }
- *                 count: { type: integer, example: 3 }
- *                 data:
- *                   type: array
- *                   items: { $ref: '#/components/schemas/Category' }
- */
-router.get('/', categoryController.findAll);
-
-/**
- * @openapi
- * /api/categories/{id}:
- *   get:
- *     tags: [Categories]
- *     summary: Busca uma categoria pelo id
+ *     tags: [Product Specifications]
+ *     summary: 'Lista as especificações de um produto (público)'
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: productId
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
- *         description: Categoria encontrada.
+ *         description: Lista de especificações.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/Category' }
+ *                 count: { type: integer, example: 5 }
+ *                 data:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/ProductSpecification' }
  *       404:
- *         description: Categoria não encontrada.
+ *         description: Produto não encontrado.
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id', validate({ params: categoryIdParamSchema }), categoryController.findById);
+router.get(
+  '/',
+  validate({ params: productIdOnlyParamSchema }),
+  productSpecificationController.findAll
+);
 
 /**
  * @openapi
- * /api/categories/{id}:
+ * /api/v1/products/{productId}/specifications/{id}:
  *   patch:
- *     tags: [Categories]
- *     summary: Atualiza parcialmente uma categoria
+ *     tags: [Product Specifications]
+ *     summary: 'Atualiza uma especificação (apenas administradores)'
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema: { type: string, format: uuid }
  *       - in: path
  *         name: id
  *         required: true
@@ -141,17 +140,17 @@ router.get('/:id', validate({ params: categoryIdParamSchema }), categoryControll
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateCategoryInput'
+ *             $ref: '#/components/schemas/UpdateProductSpecificationInput'
  *     responses:
  *       200:
- *         description: Categoria atualizada.
+ *         description: Especificação atualizada.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/Category' }
+ *                 data: { $ref: '#/components/schemas/ProductSpecification' }
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -165,7 +164,7 @@ router.get('/:id', validate({ params: categoryIdParamSchema }), categoryControll
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Categoria não encontrada.
+ *         description: Especificação não encontrada.
  *         content:
  *           application/json:
  *             schema:
@@ -181,24 +180,30 @@ router.patch(
   '/:id',
   authenticate,
   requireAdmin,
-  validate({ params: categoryIdParamSchema, body: updateCategorySchema }),
-  categoryController.update
+  validate({ params: productSpecificationParamSchema, body: updateProductSpecificationSchema }),
+  productSpecificationController.update
 );
 
 /**
  * @openapi
- * /api/categories/{id}:
+ * /api/v1/products/{productId}/specifications/{id}:
  *   delete:
- *     tags: [Categories]
- *     summary: Remove uma categoria
+ *     tags: [Product Specifications]
+ *     summary: 'Remove uma especificação (apenas administradores)'
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema: { type: string, format: uuid }
  *       - in: path
  *         name: id
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
  *       204:
- *         description: Categoria removida com sucesso (sem conteúdo).
+ *         description: Especificação removida com sucesso (sem conteúdo).
  *       401:
  *         description: Token de acesso ausente, inválido ou expirado.
  *         content:
@@ -212,13 +217,7 @@ router.patch(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
- *         description: Categoria não encontrada.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       409:
- *         description: Categoria possui produtos associados.
+ *         description: Especificação não encontrada.
  *         content:
  *           application/json:
  *             schema:
@@ -228,8 +227,8 @@ router.delete(
   '/:id',
   authenticate,
   requireAdmin,
-  validate({ params: categoryIdParamSchema }),
-  categoryController.remove
+  validate({ params: productSpecificationParamSchema }),
+  productSpecificationController.remove
 );
 
 export default router;

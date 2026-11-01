@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { locationController } from '../controllers/location.controller';
-import { validate } from '../middlewares/validate';
-import { provinceSlugParamSchema } from '../validators/location.validator';
+import { locationController } from '../../controllers/location.controller';
+import { validate } from '../../middlewares/validate';
+import { provinceSlugParamSchema } from '../../validators/location.validator';
 
 const router = Router();
 
@@ -14,7 +14,7 @@ const router = Router();
 
 /**
  * @openapi
- * /api/locations:
+ * /api/v1/locations:
  *   get:
  *     tags: [Locations]
  *     summary: Lista todas as 21 províncias, cada uma já com os seus municípios
@@ -40,7 +40,7 @@ router.get('/', locationController.listAll);
 
 /**
  * @openapi
- * /api/locations/provinces:
+ * /api/v1/locations/provinces:
  *   get:
  *     tags: [Locations]
  *     summary: Lista as 21 províncias (sem os municípios)
@@ -65,7 +65,7 @@ router.get('/provinces', locationController.listProvinces);
 
 /**
  * @openapi
- * /api/locations/provinces/{province}/municipalities:
+ * /api/v1/locations/provinces/{province}/municipalities:
  *   get:
  *     tags: [Locations]
  *     summary: Lista os municípios de uma província específica

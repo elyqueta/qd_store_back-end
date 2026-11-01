@@ -2,6 +2,7 @@
 # container vêm exclusivamente do docker-compose.yml.
 .env
 .env.local
+.env.render
 .env.*.local
 
 node_modules

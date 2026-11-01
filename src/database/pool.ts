@@ -1,5 +1,6 @@
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { env } from '../config/env';
+import { logger } from '../config/logger';
 
 /**
  * Por que um Pool único e exportado como singleton?
@@ -41,7 +42,7 @@ export const pool = new Pool({
  * sozinho na próxima query, abrindo uma nova conexão.
  */
 pool.on('error', (err) => {
-  console.error('Erro inesperado em conexão ociosa do pool Postgres:', err);
+  logger.error({ err }, 'Erro inesperado em conexão ociosa do pool Postgres');
 });
 
 /**

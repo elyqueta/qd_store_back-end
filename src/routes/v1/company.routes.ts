@@ -127,7 +127,7 @@ router.get('/', requireAdmin, companyController.findAll);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id', validate({ params: companyIdParamSchema }), companyController.findById);
+router.get('/:id', validate({ params: companyIdParamSchema }), requireAdminOrCompanyOwner('id'), companyController.findById);
 
 /**
  * @openapi

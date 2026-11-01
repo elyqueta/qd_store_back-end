@@ -1,5 +1,6 @@
 import { userRepository } from '../../repositories/user.repository';
 import { hashPassword } from '../../utils/password.util';
+import { logger } from '../../config/logger';
 import { SEED_USERS, SEED_PASSWORD } from './data';
 
 /**
@@ -17,7 +18,7 @@ export async function seedUsers(): Promise<Map<string, string>> {
     const existing = await userRepository.findByEmail(user.email);
 
     if (existing) {
-      console.warn(`Utilizador "${user.email}" já existe (id: ${existing.id}). Nada a fazer.`);
+      logger.warn(`Utilizador "${user.email}" já existe (id: ${existing.id}). Nada a fazer.`);
       emailToId.set(user.email, existing.id);
       continue;
     }
@@ -32,7 +33,7 @@ export async function seedUsers(): Promise<Map<string, string>> {
       role: user.role ?? 'customer',
     });
 
-    console.warn(`Utilizador criado: ${created.email} (id: ${created.id})`);
+    logger.info(`Utilizador criado: ${created.email} (id: ${created.id})`);
     emailToId.set(user.email, created.id);
   }
 

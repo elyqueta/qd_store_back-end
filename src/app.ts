@@ -1,5 +1,6 @@
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { pool } from './database/pool';
 import { env } from './config/env';
 import { corsOptions } from './config/cors';
@@ -7,11 +8,30 @@ import { swaggerSpec } from './config/swagger';
 import { asyncHandler } from './middlewares/asyncHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
 import { errorHandler } from './middlewares/errorHandler';
+import { apiLimiter } from './middlewares/rateLimiter';
 import v1Routes from './routes/v1';
 
 const app: Application = express();
 
+app.set('trust proxy', 1);
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        // A página de docs (/api-docs) carrega o Scalar UI via CDN;
+        // permitir esse domínio em script-src sem abrir geral.
+        scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
+      },
+    },
+  })
+);
 app.use(cors(corsOptions));
+
+// Rate limit só nas rotas da API (não em /health, para não quebrar
+// orchestrators que batem no health check em curto intervalo).
+app.use('/api/v1', apiLimiter);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

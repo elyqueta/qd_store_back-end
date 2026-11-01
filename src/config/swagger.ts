@@ -133,8 +133,9 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
         },
       },
       /**
-       * accountType agora inclui 'admin' — reflete AccountType em
-       * types/user.types.ts (ver 090_add_admin_account_type.sql).
+       * accountType é apenas 'personal' | 'business' (enum account_type
+       * do Postgres). 'admin' não é um tipo de conta — é um nível de
+       * acesso da plataforma, representado pelo campo `role`.
        */
       User: {
         type: 'object',
@@ -144,7 +145,8 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
           email: { type: 'string', format: 'email', example: 'joao@exemplo.co.ao' },
           phone: { type: 'string', example: '923456789' },
           nif: { type: 'string', nullable: true, example: '005123456LA042' },
-          accountType: { type: 'string', enum: ['personal', 'business', 'admin'] },
+          accountType: { type: 'string', enum: ['personal', 'business'] },
+          role: { type: 'string', enum: ['customer', 'admin'] },
           status: { type: 'string', enum: ['active', 'inactive', 'banned'] },
           deactivatedAt: { type: 'string', format: 'date-time', nullable: true },
           createdAt: { type: 'string', format: 'date-time' },

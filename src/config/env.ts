@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { z } from 'zod';
+import { logger } from './logger';
 
 /**
  * Por que validar variáveis de ambiente com Zod?
@@ -120,16 +121,14 @@ function loadEnv(): Env {
   const result = envSchema.safeParse(process.env);
 
   if (!result.success) {
-    console.error('\nErro na configuração de variáveis de ambiente:\n');
+    logger.error({ issues: result.error.issues }, 'Erro na configuração de variáveis de ambiente');
 
     for (const issue of result.error.issues) {
       const campo = issue.path.join('.') || '(desconhecido)';
-      console.error(`  • ${campo}: ${issue.message}`);
+      logger.warn(`  • ${campo}: ${issue.message}`);
     }
 
-    console.error(
-      '\nVerifique o arquivo .env (use .env.example como referência) e tente novamente.\n'
-    );
+    logger.error('Verifique o arquivo .env (use .env.example como referência) e tente novamente.');
 
     // Encerra o processo imediatamente. A aplicação NUNCA deve subir
     // com configuração inválida.

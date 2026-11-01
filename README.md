@@ -107,6 +107,12 @@ pai, herdando o prefixo.
 > globs (`*.routes.ts` para dev e `*.routes.js` para a imagem
 > compilada) — alterar o caminho dos ficheiros de rotas exige
 > actualizar `src/config/swagger.ts`.
+>
+> **Tela branca ao abrir a docs:** o HTML da docs carrega o Scalar UI
+> de um CDN (`cdn.jsdelivr.net`). Se não houver internet ou um proxy
+> bloquear esse domínio, a tela fica branca — o spec em
+> `/openapi.json` continua a funcionar normalmente. Abra o console do
+> navegador (F12) para confirmar se há erro de carregamento do CDN.
 
 ## Notas de arquitetura do setup Docker
 
@@ -155,6 +161,27 @@ http://127.0.0.1:1914/api/v1/categories
 ```bash
 docker compose logs -f api
 docker compose logs -f postgres
+```
+
+## Logs
+
+A aplicação usa **Pino**. Em desenvolvimento emite texto colorido e
+legível no terminal; em produção emite JSON numa única linha, pronto
+para ingestão por sistemas de log (Datadog, CloudWatch, ELK).
+
+```bash
+docker compose logs -f api
+docker compose logs -f postgres
+```
+
+## Testes
+
+Usa **Vitest**. Executar:
+
+```bash
+npm run test          # corre os testes uma vez
+npm run test:watch    # modo watch
+npm run test:coverage # com cobertura de código
 ```
 
 ## Desenvolvimento local sem Docker

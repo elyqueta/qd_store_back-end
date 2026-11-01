@@ -18,7 +18,11 @@
     "migrate:up": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down",
     "migrate:create": "node-pg-migrate create",
-    "seed": "tsx src/scripts/seeds/index.ts"
+    "seed": "tsx src/scripts/seeds/index.ts",
+    "seed:admin": "tsx src/scripts/seeds/seedAdmin.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [
     "ecommerce",
@@ -39,6 +43,8 @@
     "node-pg-migrate": "^7.9.1",
     "nodemon": "^3.1.14",
     "pg": "^8.22.0",
+    "pino": "^10.4.0",
+    "pino-pretty": "^13.2.0",
     "swagger-jsdoc": "^6.3.0",
     "zod": "^4.4.3"
   },
@@ -50,13 +56,16 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.20.0",
+    "@types/pino": "^7.0.4",
     "@types/swagger-jsdoc": "^6.0.4",
+    "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.7.0",
     "prettier": "^3.9.6",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.65.0"
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^5.0.5"
   }
 }

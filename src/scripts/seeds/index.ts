@@ -1,4 +1,5 @@
 import { closePool } from '../../database/pool';
+import { logger } from '../../config/logger';
 import { SEED_PASSWORD } from './data';
 import { seedUsers } from './seedUsers';
 import { seedCompanies, seedUserCompanies } from './seedCompanies';
@@ -10,9 +11,9 @@ import { seedOrders } from './seedOrders';
 import { seedWishlists, seedNotifications } from './seedEngagement';
 
 async function runSeeds(): Promise<void> {
-  console.warn('\n=== A iniciar seeds ===\n');
+  logger.warn('=== A iniciar seeds ===');
 
-  console.warn('--- Utilizadores ---');
+  logger.warn('--- Utilizadores ---');
   const userIds = await seedUsers();
 
   console.warn('\n--- Empresas ---');
@@ -51,13 +52,13 @@ async function runSeeds(): Promise<void> {
   console.warn(`  Senha:        ${SEED_PASSWORD}`);
   console.warn(`  Admin:        admin@qd.co.ao`);
   console.warn(`  Cliente 1:    joao.silva@example.com`);
-  console.warn(`  Cliente 2:    maria.santos@example.com`);
-  console.warn(`  Empresa:      empresa.tech@example.com`);
+  logger.warn(`  Cliente 2:    maria.santos@example.com`);
+  logger.warn(`  Empresa:      empresa.tech@example.com`);
 }
 
 runSeeds()
   .catch((err: unknown) => {
-    console.error('Erro ao executar seeds:', err);
+    logger.error({ err }, 'Erro ao executar seeds');
     process.exit(1);
   })
   .finally(async () => {

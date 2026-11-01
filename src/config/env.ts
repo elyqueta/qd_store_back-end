@@ -21,6 +21,9 @@ const envSchema = z.object({
 
   PORT: z.coerce.number({ error: 'PORT deve ser um número' }).int().positive().default(3000),
 
+  // 0 = sem proxy/local; 1 = um proxy à frente, o caso típico em cloud.
+  TRUST_PROXY: z.coerce.number({ error: 'TRUST_PROXY deve ser um número' }).int().min(0).default(0),
+
   // Connection string completa do PostgreSQL.
   // Formato: postgres://usuario:senha@host:porta/nome_do_banco
   DATABASE_URL: z
@@ -107,6 +110,18 @@ const envSchema = z.object({
     .min(10, 'BCRYPT_SALT_ROUNDS deve ser no mínimo 10 por segurança.')
     .max(15, 'BCRYPT_SALT_ROUNDS acima de 15 é impraticavelmente lento.')
     .default(12),
+
+  PAYMENT_GATEWAY: z.enum(['mock']).default('mock'),
+  PAYMENT_MOCK_FAIL_PHONE: z.string().default('900000000'),
+  PAYMENT_REFERENCE_TTL_HOURS: z.coerce
+    .number({ error: 'PAYMENT_REFERENCE_TTL_HOURS deve ser um número' })
+    .int()
+    .positive()
+    .default(72),
+  PAYMENT_MULTICAIXA_ENTITY: z.string().min(1).max(10).default('00000'),
+  BANK_TRANSFER_IBAN: z.string().min(1).max(34).default('AO06000000000000000000000'),
+  BANK_TRANSFER_BANK: z.string().default('Banco Exemplo'),
+  BANK_TRANSFER_HOLDER: z.string().default('QD Solutions (DADOS FICTÍCIOS)'),
 });
 
 /**

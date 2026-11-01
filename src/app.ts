@@ -13,28 +13,21 @@ import v1Routes from './routes/v1';
 
 const app: Application = express();
 
-app.set('trust proxy', 1);
+app.set('trust proxy', env.TRUST_PROXY);
 
 app.use(
   helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        // A página de docs (/api-docs) carrega o Scalar UI via CDN;
-        // permitir esse domínio em script-src sem abrir geral.
-        scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
-      },
-    },
+    // O Scalar usa script inline em desenvolvimento; em produção a documentação não é servida.
+    contentSecurityPolicy: env.NODE_ENV === 'production' ? undefined : false,
   })
 );
 app.use(cors(corsOptions));
 
-// Rate limit só nas rotas da API (não em /health, para não quebrar
-// orchestrators que batem no health check em curto intervalo).
-app.use('/api/v1', apiLimiter);
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// O limitador protege as rotas versionadas e deixa /health disponível para os health checks.
+app.use('/api/v1', apiLimiter);
 
 /**
  * Documentação interativa, disponível SOMENTE fora de produção.

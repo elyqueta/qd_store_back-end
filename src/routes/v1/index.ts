@@ -8,6 +8,10 @@ import addressRoutes from './address.routes';
 import productRoutes from './product.routes';
 import deliveryTypeRoutes from './deliveryType.routes';
 import paymentMethodRoutes from './paymentMethod.routes';
+import cartRoutes from './cart.routes';
+import orderRoutes from './order.routes';
+import wishlistRoutes from './wishlist.routes';
+import notificationRoutes from './notification.routes';
 
 /**
  * Router agregador da versão 1 da API.
@@ -35,5 +39,9 @@ router.use('/addresses', addressRoutes);
 router.use('/products', productRoutes);
 router.use('/delivery-types', deliveryTypeRoutes);
 router.use('/payment-methods', paymentMethodRoutes);
+router.use('/cart', cartRoutes);
+router.use('/orders', orderRoutes);
+router.use('/wishlist', wishlistRoutes);
+router.use('/notifications', notificationRoutes);
 
 export default router;

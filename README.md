@@ -11,6 +11,51 @@ API REST do QD Solutions — e-commerce de tecnologia para Angola.
 ## Pré-requisitos
 
 - Docker 20.10+ e o plugin Compose v2 (`docker compose version`)
+- Node.js 20 ou superior e npm (para executar a API localmente)
+
+## Arranque rápido
+
+1. Instalar dependências e preparar o ficheiro de ambiente:
+
+   ```bash
+   npm install
+   cp .env.example .env
+   ```
+
+   Revê `DATABASE_URL`, `CORS_ORIGIN` e `JWT_SECRET` no `.env`. O exemplo destina-se a
+   desenvolvimento local.
+2. Iniciar o PostgreSQL:
+
+   ```bash
+   docker compose up -d
+   ```
+
+3. Aplicar migrations e carregar dados de teste:
+
+   ```bash
+   npm run migrate:up
+   npm run seed
+   ```
+
+4. Iniciar a API:
+
+   ```bash
+   npm run dev
+   ```
+
+5. Noutro terminal, executar o smoke test:
+
+   ```bash
+   npm run smoke
+   ```
+
+   Para testar a API servida pelo Docker Compose, configura
+   `API_URL=http://localhost:1914 npm run smoke`. O padrão do smoke test é
+   `http://localhost:3000`.
+
+Swagger/Scalar: `http://localhost:3000/api-docs` em desenvolvimento local ou
+`http://localhost:1914/api-docs` no Docker Compose. O contrato detalhado para integração do
+front-end está em [docs/API-CONTRACT.md](./docs/API-CONTRACT.md).
 
 ## Como subir os containers
 
@@ -75,6 +120,10 @@ Todas as rotas de domínio vivem sob o prefixo **`/api/v1`**:
 | Produtos | `/api/v1/products` |
 | Tipos de entrega | `/api/v1/delivery-types` |
 | Métodos de pagamento | `/api/v1/payment-methods` |
+| Carrinho | `/api/v1/cart` |
+| Encomendas | `/api/v1/orders` |
+| Wishlist | `/api/v1/wishlist` |
+| Notificações | `/api/v1/notifications` |
 
 A estrutura de pastas espelha a versão:
 

@@ -20,6 +20,7 @@
     "migrate:create": "node-pg-migrate create",
     "seed": "tsx src/scripts/seeds/index.ts",
     "seed:admin": "tsx src/scripts/seeds/seedAdmin.ts",
+    "smoke": "tsx src/scripts/smokeTest.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

@@ -1,3 +1,5 @@
+import type { CreateProductImageData, ProductImage } from './productImage.types';
+
 /**
  * Tipos relacionados à entidade PRODUCT.
  *
@@ -32,6 +34,13 @@ export interface ProductRow {
   status: ProductStatus;
   created_at: Date;
   updated_at: Date;
+  main_image_id: string | null;
+  main_image_url: string | null;
+  main_image_display_order: number | null;
+  main_image_width: number | null;
+  main_image_height: number | null;
+  main_image_format: string | null;
+  main_image_size_bytes: number | null;
 }
 
 /** Formato de domínio, usado por service, controller e resposta HTTP. */
@@ -47,6 +56,7 @@ export interface Product {
   status: ProductStatus;
   createdAt: Date;
   updatedAt: Date;
+  mainImage: ProductImage | null;
 }
 
 /**
@@ -64,6 +74,7 @@ export interface CreateProductData {
   price: number;
   originalPrice?: number | null;
   badge?: string | null;
+  mainImage?: Omit<CreateProductImageData, 'productId' | 'displayOrder'>;
 }
 
 /**

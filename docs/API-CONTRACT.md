@@ -72,10 +72,10 @@ O access token dura o valor de `JWT_ACCESS_EXPIRES_IN` (por defeito `15m`). O re
 ### Produtos, imagens e especificações
 
 | Método e URL | Acesso | Body, parâmetros ou resultado |
-|---|---|---|
-| `GET /api/v1/products?page=1&limit=20&categoryId=&status=` | Público | `200`, produtos e `pagination`. |
-| `GET /api/v1/products/:id` | Público | `200`, produto; 404 se inexistente. |
-| `POST /api/v1/products` | Admin | `{ categoryId, name, price, description?, originalPrice?, badge? }` → `201`. |
+|---|quero que agora todos os produtos retornem com pelo menos a imagem principal e mandes o novo bod req para eu mandar o front adaptar sem destruir o que já funciona---|---|
+| `GET /api/v1/products?page=1&limit=20&categoryId=&status=` | Público | `200`, produtos e `pagination`; cada produto inclui `mainImage` (imagem com menor `displayOrder`) ou `null` quando ainda não tem imagem. |
+| `GET /api/v1/products/:id` | Público | `200`, produto com `mainImage` ou `null`; 404 se inexistente. |
+| `POST /api/v1/products` | Admin | `{ categoryId, name, price, description?, originalPrice?, badge?, mainImage? }` → `201`; `mainImage`, quando enviada, é criada juntamente com o produto e recebe `displayOrder: 0`. |
 | `PATCH /api/v1/products/:id` | Admin | Campos editáveis do produto, todos opcionais, pelo menos um. |
 | `DELETE /api/v1/products/:id` | Admin | `204`; 409 quando o produto está referenciado. |
 | `GET /api/v1/products/:productId/images` | Público | `200`, imagens ordenadas por `displayOrder`. |
@@ -86,6 +86,32 @@ O access token dura o valor de `JWT_ACCESS_EXPIRES_IN` (por defeito `15m`). O re
 | `POST /api/v1/products/:productId/specifications` | Admin | `{ specKey, specValue, displayOrder }` → `201`. |
 | `PATCH /api/v1/products/:productId/specifications/:id` | Admin | `{ specKey?, specValue?, displayOrder? }` → `200`. |
 | `DELETE /api/v1/products/:productId/specifications/:id` | Admin | `204`. |
+
+Exemplo compatível com o `POST /api/v1/products` actual; `mainImage` é opcional para não
+invalidar integrações existentes:
+
+```json
+{
+  "categoryId": "c1b2a3d4-e5f6-4789-a012-3456789abcde",
+  "name": "Portátil Dell Inspiron 15",
+  "price": 450000,
+  "description": "Portátil para trabalho e estudo",
+  "originalPrice": 520000,
+  "badge": "Promoção",
+  "mainImage": {
+    "url": "https://cdn.exemplo.co.ao/produtos/dell-inspiron-15.jpg",
+    "width": 1200,
+    "height": 900,
+    "format": "jpg",
+    "sizeBytes": 204800
+  }
+}
+```
+
+O campo `mainImage` na resposta contém o objecto da imagem principal (`id`, `productId`,
+`url`, `displayOrder` e metadados). Produtos criados antes desta alteração, ou criados sem
+`mainImage`, devolvem `mainImage: null` até existir uma imagem associada. Continua disponível
+o fluxo anterior de criação de produto seguido de `POST /api/v1/products/:productId/images`.
 
 ### Localizações
 

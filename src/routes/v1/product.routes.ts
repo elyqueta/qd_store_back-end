@@ -37,7 +37,7 @@ const router = Router();
  *             $ref: '#/components/schemas/CreateProductInput'
  *     responses:
  *       201:
- *         description: Produto criado com sucesso.
+ *         description: Produto criado com sucesso. Se `mainImage` for enviada, fica associada com `displayOrder` 0.
  *         content:
  *           application/json:
  *             schema:
@@ -97,6 +97,7 @@ router.post(
  *       - in: query
  *         name: status
  *         schema: { type: string, enum: [active, inactive, out_of_stock] }
+ *     description: Cada produto inclui `mainImage` (a imagem com menor `displayOrder`) ou `null` se ainda não tiver imagem.
  *     responses:
  *       200:
  *         description: Lista paginada de produtos.

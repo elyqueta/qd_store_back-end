@@ -28,6 +28,8 @@ export const createProductImageSchema = z
   })
   .strict();
 
+export const createMainProductImageSchema = createProductImageSchema.omit({ displayOrder: true });
+
 export const updateProductImageSchema = z
   .object({
     url: urlSchema.optional(),

@@ -39,6 +39,10 @@ export const productSchemas: OpenApiSchemas = {
       status: { type: 'string', enum: ['active', 'inactive', 'out_of_stock'] },
       createdAt: { type: 'string', format: 'date-time' },
       updatedAt: { type: 'string', format: 'date-time' },
+      mainImage: {
+        allOf: [{ $ref: '#/components/schemas/ProductImage' }],
+        nullable: true,
+      },
     },
   },
   CreateProductInput: {
@@ -51,6 +55,18 @@ export const productSchemas: OpenApiSchemas = {
       price: { type: 'number', example: 450000 },
       originalPrice: { type: 'number', example: 520000 },
       badge: { type: 'string', maxLength: 50, example: 'Promoção' },
+      mainImage: { $ref: '#/components/schemas/CreateMainProductImageInput' },
+    },
+  },
+  CreateMainProductImageInput: {
+    type: 'object',
+    required: ['url'],
+    properties: {
+      url: { type: 'string', example: 'https://cdn.exemplo.co.ao/produtos/abc.jpg' },
+      width: { type: 'integer', example: 1200 },
+      height: { type: 'integer', example: 900 },
+      format: { type: 'string', maxLength: 10, example: 'jpg' },
+      sizeBytes: { type: 'integer', example: 204800 },
     },
   },
   UpdateProductInput: {

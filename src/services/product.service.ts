@@ -21,6 +21,7 @@ async function create(input: CreateProductInput): Promise<Product> {
     price: input.price,
     originalPrice: input.originalPrice ?? null,
     badge: input.badge ?? null,
+    mainImage: input.mainImage,
   });
 }
 

@@ -1,5 +1,11 @@
-import { query } from '../database/pool';
-import { CreateProductData, Product, ProductFilters, ProductRow } from '../types/product.types';
+import { getClient, query } from '../database/pool';
+import {
+  CreateProductData,
+  Product,
+  ProductFilters,
+  ProductRow,
+} from '../types/product.types';
+import { ProductImage } from '../types/productImage.types';
 import { PaginatedResult, PaginationParams } from '../types/pagination.types';
 import { UpdateProductInput } from '../validators/product.validator';
 import { ConflictError } from '../errors';
@@ -18,6 +24,24 @@ function isPgError(err: unknown): err is { code: string } {
  * daria 0, um valor de preço tecnicamente válido e enganoso.
  */
 function toProduct(row: ProductRow): Product {
+  let mainImage: ProductImage | null = null;
+  if (row.main_image_id !== null) {
+    if (row.main_image_url === null || row.main_image_display_order === null) {
+      throw new Error(`Imagem principal inválida para o produto "${row.id}".`);
+    }
+
+    mainImage = {
+      id: row.main_image_id,
+      productId: row.id,
+      url: row.main_image_url,
+      displayOrder: row.main_image_display_order,
+      width: row.main_image_width,
+      height: row.main_image_height,
+      format: row.main_image_format,
+      sizeBytes: row.main_image_size_bytes,
+    };
+  }
+
   return {
     id: row.id,
     categoryId: row.id_category,
@@ -30,31 +54,86 @@ function toProduct(row: ProductRow): Product {
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    mainImage,
   };
 }
 
-const RETURNING_COLUMNS = `id, id_category, name, description, price, original_price,
-  badge, status, created_at, updated_at`;
-const LIST_COLUMNS = `product.id, product.id_category, product.name, product.description,
+const PRODUCT_COLUMNS = `product.id, product.id_category, product.name, product.description,
   product.price, product.original_price, product.badge, product.status,
   product.created_at, product.updated_at`;
+const MAIN_IMAGE_COLUMNS = `main_image.id AS main_image_id, main_image.url AS main_image_url,
+  main_image.display_order AS main_image_display_order, main_image.width AS main_image_width,
+  main_image.height AS main_image_height, main_image.format AS main_image_format,
+  main_image.size_bytes AS main_image_size_bytes`;
+const MAIN_IMAGE_JOIN = `LEFT JOIN LATERAL (
+  SELECT id, url, display_order, width, height, format, size_bytes
+  FROM product_image
+  WHERE id_product = product.id
+  ORDER BY display_order ASC, id ASC
+  LIMIT 1
+) AS main_image ON true`;
 
 async function create(data: CreateProductData): Promise<Product> {
-  const result = await query<ProductRow>(
-    `INSERT INTO product (id_category, name, description, price, original_price, badge)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING ${RETURNING_COLUMNS}`,
-    [
-      data.categoryId,
-      data.name,
-      data.description ?? null,
-      data.price,
-      data.originalPrice ?? null,
-      data.badge ?? null,
-    ]
-  );
+  const client = await getClient();
 
-  return toProduct(result.rows[0] as ProductRow);
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query<{ id: string }>(
+      `INSERT INTO product (id_category, name, description, price, original_price, badge)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [
+        data.categoryId,
+        data.name,
+        data.description ?? null,
+        data.price,
+        data.originalPrice ?? null,
+        data.badge ?? null,
+      ]
+    );
+    const productId = result.rows[0]?.id;
+
+    if (!productId) {
+      throw new Error('Não foi possível obter o produto criado.');
+    }
+
+    if (data.mainImage) {
+      await client.query(
+        `INSERT INTO product_image (id_product, url, display_order, width, height, format, size_bytes)
+         VALUES ($1, $2, 0, $3, $4, $5, $6)`,
+        [
+          productId,
+          data.mainImage.url,
+          data.mainImage.width ?? null,
+          data.mainImage.height ?? null,
+          data.mainImage.format ?? null,
+          data.mainImage.sizeBytes ?? null,
+        ]
+      );
+    }
+
+    const productResult = await client.query<ProductRow>(
+      `SELECT ${PRODUCT_COLUMNS}, ${MAIN_IMAGE_COLUMNS}
+       FROM product
+       ${MAIN_IMAGE_JOIN}
+       WHERE product.id = $1`,
+      [productId]
+    );
+    const productRow = productResult.rows[0];
+
+    if (!productRow) {
+      throw new Error(`Não foi possível carregar o produto "${productId}" após a criação.`);
+    }
+
+    await client.query('COMMIT');
+    return toProduct(productRow);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -111,9 +190,10 @@ async function findAll(
   const offsetParamIndex = values.length + 2;
 
   const dataResult = await query<ProductRow>(
-    `SELECT ${LIST_COLUMNS}, category.label AS category_name
+    `SELECT ${PRODUCT_COLUMNS}, ${MAIN_IMAGE_COLUMNS}, category.label AS category_name
      FROM product
      INNER JOIN category ON category.id = product.id_category
+     ${MAIN_IMAGE_JOIN}
      ${clause}
     ORDER BY product.created_at DESC
      LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`,
@@ -130,9 +210,13 @@ async function findAll(
 }
 
 async function findById(id: string): Promise<Product | null> {
-  const result = await query<ProductRow>(`SELECT ${RETURNING_COLUMNS} FROM product WHERE id = $1`, [
-    id,
-  ]);
+  const result = await query<ProductRow>(
+    `SELECT ${PRODUCT_COLUMNS}, ${MAIN_IMAGE_COLUMNS}
+     FROM product
+     ${MAIN_IMAGE_JOIN}
+     WHERE product.id = $1`,
+    [id]
+  );
 
   const row = result.rows[0];
   return row ? toProduct(row) : null;
@@ -193,12 +277,11 @@ async function update(id: string, data: UpdateProductInput): Promise<Product | n
     `UPDATE product
      SET ${fields.join(', ')}
      WHERE id = $${paramIndex}
-     RETURNING ${RETURNING_COLUMNS}`,
+     RETURNING id`,
     values
   );
 
-  const row = result.rows[0];
-  return row ? toProduct(row) : null;
+  return result.rows[0] ? findById(id) : null;
 }
 
 /**

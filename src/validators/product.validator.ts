@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createMainProductImageSchema } from './productImage.validator';
 
 const nameSchema = z
   .string({ error: 'name é obrigatório e deve ser texto.' })
@@ -64,6 +65,7 @@ export const createProductSchema = z
     price: priceSchema,
     originalPrice: originalPriceSchema.optional(),
     badge: badgeSchema.optional(),
+    mainImage: createMainProductImageSchema.optional(),
   })
   .strict()
   .superRefine(validatePriceConsistency);

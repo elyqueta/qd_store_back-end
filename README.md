@@ -210,13 +210,6 @@ http://127.0.0.1:1914/api/v1/categories
 
 ## Logs
 
-```bash
-docker compose logs -f api
-docker compose logs -f postgres
-```
-
-## Logs
-
 A aplicação usa **Pino**. Em desenvolvimento emite texto colorido e
 legível no terminal; em produção emite JSON numa única linha, pronto
 para ingestão por sistemas de log (Datadog, CloudWatch, ELK).
@@ -235,6 +228,26 @@ npm run test          # corre os testes uma vez
 npm run test:watch    # modo watch
 npm run test:coverage # com cobertura de código
 ```
+
+## Seeds (dados de teste)
+
+### Local (sem Docker)
+
+```bash
+npm run seed          # todos os seeds
+npm run seed:admin    # apenas o utilizador administrador
+```
+
+### Dentro do container Docker
+
+O container tem apenas o código compilado (`dist/`), então os seeds correm via `node`:
+
+```bash
+docker compose exec api npm run seed:docker          # todos os seeds
+docker compose exec api npm run seed:admin:docker    # apenas o admin
+```
+
+Os seeds são idempotentes: verificam se o registo já existe antes de criar. O container aplica as migrations automaticamente ao subir, então o schema já estará atualizado antes de correr os seeds.
 
 ## Desenvolvimento local sem Docker
 

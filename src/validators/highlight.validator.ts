@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const uuid = z.uuid('deve ser um UUID válido.');
+const uuid = z.guid('deve ser um UUID válido.');
 const date = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() ? new Date(value) : value),
   z.date().optional().nullable()

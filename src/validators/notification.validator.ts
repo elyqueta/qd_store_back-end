@@ -12,7 +12,7 @@ export const listNotificationsQuerySchema = z
   .strict();
 
 export const notificationIdParamSchema = z
-  .object({ id: z.uuid('id deve ser um UUID válido.') })
+  .object({ id: z.guid('id deve ser um UUID válido.') })
   .strict();
 
 export type ListNotificationsQuery = z.infer<typeof listNotificationsQuerySchema>;

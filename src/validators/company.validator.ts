@@ -56,7 +56,7 @@ export const updateCompanySchema = z
   });
 
 export const companyIdParamSchema = z.object({
-  id: z.uuid('id deve ser um UUID válido.'),
+  id: z.guid('id deve ser um UUID válido.'),
 });
 
 export const companyMineQuerySchema = z.object({}).strict();

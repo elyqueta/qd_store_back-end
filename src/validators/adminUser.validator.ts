@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const adminUserIdParamSchema = z.object({ id: z.uuid('id deve ser um UUID válido.') }).strict();
+export const adminUserIdParamSchema = z.object({ id: z.guid('id deve ser um UUID válido.') }).strict();
 
 export const adminListUsersQuerySchema = z
   .object({

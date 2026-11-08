@@ -33,7 +33,7 @@ const numberLikeSchema = (fieldName: string) =>
 const priceSchema = numberLikeSchema('price');
 const originalPriceSchema = numberLikeSchema('originalPrice');
 
-const categoryIdSchema = z.uuid('categoryId deve ser um UUID válido.');
+const categoryIdSchema = z.guid('categoryId deve ser um UUID válido.');
 
 /**
  * Regra cruzada: originalPrice representa o preço "riscado" antes do
@@ -108,7 +108,7 @@ export const updateProductSchema = z
   });
 
 export const productIdParamSchema = z.object({
-  id: z.uuid('id deve ser um UUID válido.'),
+  id: z.guid('id deve ser um UUID válido.'),
 });
 
 /**
@@ -122,9 +122,9 @@ export const listProductsQuerySchema = z
   .object({
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().max(100, 'limit máximo é 100.').default(20),
-    categoryId: z.uuid('categoryId deve ser um UUID válido.').optional(),
+    categoryId: z.guid('categoryId deve ser um UUID válido.').optional(),
     status: z.enum(['active', 'inactive', 'out_of_stock']).optional(),
-    excludeId: z.uuid('excludeId deve ser um UUID válido.').optional(),
+    excludeId: z.guid('excludeId deve ser um UUID válido.').optional(),
     search: z.string().trim().min(1).max(200).optional(),
     sort: z
       .enum([

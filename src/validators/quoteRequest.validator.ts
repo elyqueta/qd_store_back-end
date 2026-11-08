@@ -77,7 +77,7 @@ export const listQuoteRequestsQuerySchema = z
   .strict();
 
 export const quoteRequestIdParamSchema = z
-  .object({ id: z.uuid('id deve ser um UUID válido.') })
+  .object({ id: z.guid('id deve ser um UUID válido.') })
   .strict();
 
 export const updateQuoteRequestStatusSchema = z

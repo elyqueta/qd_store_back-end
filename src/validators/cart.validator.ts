@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const addCartItemSchema = z
   .object({
-    productId: z.uuid('productId deve ser um UUID válido.'),
+    productId: z.guid('productId deve ser um UUID válido.'),
     quantity: z.coerce
       .number({ error: 'quantity deve ser um número inteiro.' })
       .int('quantity deve ser um número inteiro.')
@@ -24,7 +24,7 @@ export const updateCartItemSchema = z
 
 export const cartItemIdParamSchema = z
   .object({
-    itemId: z.uuid('itemId deve ser um UUID válido.'),
+    itemId: z.guid('itemId deve ser um UUID válido.'),
   })
   .strict();
 

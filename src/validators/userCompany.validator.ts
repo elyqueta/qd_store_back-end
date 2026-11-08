@@ -8,7 +8,7 @@ const roleSchema = z.string().trim().max(100, 'role deve ter no máximo 100 cara
  * corpo é QUEM está a associar (userId) e QUAL o cargo (role).
  */
 export const createUserCompanySchema = z.object({
-  userId: z.uuid('userId deve ser um UUID válido.').optional(),
+  userId: z.guid('userId deve ser um UUID válido.').optional(),
   email: z
     .string()
     .trim()
@@ -34,12 +34,12 @@ export const updateUserCompanySchema = z.object({
 }).strict();
 
 export const companyIdParamOnlySchema = z.object({
-  companyId: z.uuid('companyId deve ser um UUID válido.'),
+  companyId: z.guid('companyId deve ser um UUID válido.'),
 }).strict();
 
 export const userCompanyParamSchema = z.object({
-  companyId: z.uuid('companyId deve ser um UUID válido.'),
-  userId: z.uuid('userId deve ser um UUID válido.'),
+  companyId: z.guid('companyId deve ser um UUID válido.'),
+  userId: z.guid('userId deve ser um UUID válido.'),
 }).strict();
 
 export type CreateUserCompanyInput = z.infer<typeof createUserCompanySchema>;

@@ -2,10 +2,10 @@ import { z } from 'zod';
 
 export const createOrderSchema = z
   .object({
-    deliveryTypeId: z.uuid('deliveryTypeId deve ser um UUID válido.'),
-    paymentMethodId: z.uuid('paymentMethodId deve ser um UUID válido.'),
-    addressId: z.uuid('addressId deve ser um UUID válido.'),
-    companyId: z.uuid('companyId deve ser um UUID válido.').nullable().optional(),
+    deliveryTypeId: z.guid('deliveryTypeId deve ser um UUID válido.'),
+    paymentMethodId: z.guid('paymentMethodId deve ser um UUID válido.'),
+    addressId: z.guid('addressId deve ser um UUID válido.'),
+    companyId: z.guid('companyId deve ser um UUID válido.').nullable().optional(),
     companySnapshot: z
       .object({
         name: z.string().trim().min(1).max(200),
@@ -25,7 +25,7 @@ export const createOrderSchema = z
     path: ['companyId'],
   });
 
-export const orderIdParamSchema = z.object({ id: z.uuid('id deve ser um UUID válido.') }).strict();
+export const orderIdParamSchema = z.object({ id: z.guid('id deve ser um UUID válido.') }).strict();
 
 export const listOrdersQuerySchema = z
   .object({
@@ -43,7 +43,7 @@ export const updateOrderStatusSchema = z
   .strict();
 
 export const adminListOrdersQuerySchema = listOrdersQuerySchema.extend({
-  userId: z.uuid('userId deve ser um UUID válido.').optional(),
+  userId: z.guid('userId deve ser um UUID válido.').optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

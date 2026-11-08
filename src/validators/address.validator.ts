@@ -157,7 +157,7 @@ export const updateAddressSchema = z
   });
 
 export const addressIdParamSchema = z.object({
-  id: z.uuid('id deve ser um UUID válido.'),
+  id: z.guid('id deve ser um UUID válido.'),
 });
 
 export type CreateAddressInput = z.infer<typeof createAddressSchema>;

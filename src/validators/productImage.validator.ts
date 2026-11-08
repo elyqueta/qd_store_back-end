@@ -34,13 +34,13 @@ export const updateProductImageSchema = z
 
 /** Só o :productId, para POST / e GET / (listar todas as imagens). */
 export const productIdOnlyParamSchema = z.object({
-  productId: z.uuid('productId deve ser um UUID válido.'),
+  productId: z.guid('productId deve ser um UUID válido.'),
 });
 
 /** :productId + :id, para PATCH/DELETE de uma imagem específica. */
 export const productImageParamSchema = z.object({
-  productId: z.uuid('productId deve ser um UUID válido.'),
-  id: z.uuid('id deve ser um UUID válido.'),
+  productId: z.guid('productId deve ser um UUID válido.'),
+  id: z.guid('id deve ser um UUID válido.'),
 });
 
 export type CreateProductImageInput = z.infer<typeof createProductImageSchema>;

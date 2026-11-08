@@ -36,7 +36,7 @@ export const updateServiceSchema = z
     message: 'Envie pelo menos um campo para actualizar o serviço.',
   });
 
-export const serviceIdParamSchema = z.object({ id: z.uuid('id deve ser um UUID válido.') }).strict();
+export const serviceIdParamSchema = z.object({ id: z.guid('id deve ser um UUID válido.') }).strict();
 export const publicListServicesQuerySchema = z.object({}).strict();
 export const listServicesQuerySchema = z.object({ includeInactive: z.enum(['true', 'false']).optional() }).strict();
 

@@ -40,12 +40,12 @@ export const updateProductSpecificationSchema = z
   });
 
 export const productIdOnlyParamSchema = z.object({
-  productId: z.uuid('productId deve ser um UUID válido.'),
+  productId: z.guid('productId deve ser um UUID válido.'),
 });
 
 export const productSpecificationParamSchema = z.object({
-  productId: z.uuid('productId deve ser um UUID válido.'),
-  id: z.uuid('id deve ser um UUID válido.'),
+  productId: z.guid('productId deve ser um UUID válido.'),
+  id: z.guid('id deve ser um UUID válido.'),
 });
 
 export type CreateProductSpecificationInput = z.infer<typeof createProductSpecificationSchema>;

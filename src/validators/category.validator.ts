@@ -89,7 +89,7 @@ export const updateCategorySchema = z
  * tipo menos claro para o cliente final.
  */
 export const categoryIdParamSchema = z.object({
-  id: z.uuid('id deve ser um UUID válido.'),
+  id: z.guid('id deve ser um UUID válido.'),
 });
 
 /**

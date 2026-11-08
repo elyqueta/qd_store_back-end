@@ -16,11 +16,11 @@ export const createPaymentSchema = z.discriminatedUnion('methodType', [
 ]);
 
 export const orderIdParamSchema = z
-  .object({ orderId: z.uuid('orderId deve ser um UUID válido.') })
+  .object({ orderId: z.guid('orderId deve ser um UUID válido.') })
   .strict();
 
 export const paymentIdParamSchema = z
-  .object({ paymentId: z.uuid('paymentId deve ser um UUID válido.') })
+  .object({ paymentId: z.guid('paymentId deve ser um UUID válido.') })
   .strict();
 
 const adminPaymentNotesSchema = z

@@ -35,7 +35,7 @@ export const updateDeliveryTypeSchema = z
   });
 
 export const deliveryTypeIdParamSchema = z.object({
-  id: z.uuid('id deve ser um UUID válido.'),
+  id: z.guid('id deve ser um UUID válido.'),
 });
 
 export type CreateDeliveryTypeInput = z.infer<typeof createDeliveryTypeSchema>;

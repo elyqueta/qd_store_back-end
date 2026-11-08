@@ -1,6 +1,8 @@
 -- QD Store: dados de demonstração para PostgreSQL/Neon.
 --
 -- Executar depois de aplicar todas as migrations do projecto.
+-- Executar o ficheiro completo numa única execução/conexão: as primeiras
+-- secções usam uma tabela temporária para preparar produtos, imagens e specs.
 -- O script é transaccional e pode ser executado novamente sem duplicar
 -- os registos de demonstração. Não apaga dados existentes.
 --
@@ -236,13 +238,12 @@ SELECT md5('qd-demo-highlight:' || seed.sku)::uuid,
        true,
        seed.theme
 FROM (VALUES
-  ('LAP-001', 'hero'::highlight_placement, 'Tecnologia para trabalhar melhor', 1, 'Escolha da semana', 'dark'),
-  ('TEL-001', 'hero'::highlight_placement, 'Conectado ao que importa', 2, 'Novidade', 'light'),
-  ('GAM-001', 'showcase'::highlight_placement, 'A experiência gaming começa aqui', 1, 'Gaming', 'dark'),
-  ('ACC-001', 'showcase'::highlight_placement, 'Som para acompanhar o teu dia', 2, 'Áudio', 'light')
+  ('LAP-001', 'hero'::highlight_placement, 'Escolha da semana', 1, 'dark'),
+  ('TEL-001', 'hero'::highlight_placement, 'Novidade', 2, 'light'),
+  ('GAM-001', 'showcase'::highlight_placement, 'Gaming', 1, 'dark'),
+  ('ACC-001', 'showcase'::highlight_placement, 'Áudio', 2, 'light')
 ) AS seed(sku, placement, label, display_order, theme)
-JOIN qd_demo_product_seed product_seed ON product_seed.sku = seed.sku
-JOIN product p ON p.id = md5('qd-demo-product:' || product_seed.sku)::uuid
+JOIN product p ON p.id = md5('qd-demo-product:' || seed.sku)::uuid
 ON CONFLICT (id) DO UPDATE
 SET placement = EXCLUDED.placement, title = EXCLUDED.title,
     subtitle = EXCLUDED.subtitle, label = EXCLUDED.label,
@@ -355,8 +356,7 @@ LEFT JOIN company c ON c.nif = seed.company_nif
 JOIN payment_method pm ON pm.type = seed.payment_type AND pm.name LIKE 'Demo %'
 JOIN delivery_type dt ON dt.name = seed.delivery_name
 JOIN qd_demo_order_item_seed item ON item.reference = seed.reference
-JOIN qd_demo_product_seed product_seed ON product_seed.sku = item.sku
-JOIN product p ON p.id = md5('qd-demo-product:' || product_seed.sku)::uuid
+JOIN product p ON p.id = md5('qd-demo-product:' || item.sku)::uuid
 GROUP BY seed.reference, u.id, c.id, seed.order_type, seed.order_status,
          pm.id, dt.id, dt.price, c.name, c.nif, c.sector
 ON CONFLICT (reference) DO NOTHING;
@@ -377,8 +377,7 @@ SELECT md5('qd-demo-order-item:' || seed.reference || ':' || item.sku)::uuid,
 FROM qd_demo_order_item_seed item
 JOIN qd_demo_order_seed seed ON seed.reference = item.reference
 JOIN orders o ON o.reference = seed.reference
-JOIN qd_demo_product_seed product_seed ON product_seed.sku = item.sku
-JOIN product p ON p.id = md5('qd-demo-product:' || product_seed.sku)::uuid
+JOIN product p ON p.id = md5('qd-demo-product:' || item.sku)::uuid
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO order_payment
@@ -411,7 +410,10 @@ ON CONFLICT (id) DO NOTHING;
 -- Verificação rápida do catálogo criado.
 SELECT
   (SELECT COUNT(*) FROM product WHERE id IN (
-    SELECT md5('qd-demo-product:' || sku)::uuid FROM qd_demo_product_seed
+    SELECT md5('qd-demo-product:' || sku)::uuid
+    FROM (VALUES
+      ('LAP-001'), ('TEL-001'), ('GAM-001'), ('ACC-001')
+    ) AS demo_products(sku)
   )) AS produtos_demo,
   (SELECT COUNT(*) FROM category WHERE slug IN (
     'portateis', 'smartphones', 'acessorios', 'componentes', 'gaming',
@@ -419,8 +421,9 @@ SELECT
   )) AS categorias_demo,
   (SELECT COUNT(*) FROM highlight WHERE id IN (
     SELECT md5('qd-demo-highlight:' || sku)::uuid
-    FROM qd_demo_product_seed
-    WHERE sku IN ('LAP-001', 'TEL-001', 'GAM-001', 'ACC-001')
+    FROM (VALUES
+      ('LAP-001'), ('TEL-001'), ('GAM-001'), ('ACC-001')
+    ) AS demo_highlights(sku)
   )) AS destaques_demo;
 
 COMMIT;

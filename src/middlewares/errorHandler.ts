@@ -12,6 +12,7 @@ import { logger } from '../config/logger';
  */
 interface ErrorResponseBody {
   status: 'error';
+  code?: string;
   message: string;
   details?: unknown;
 }
@@ -95,6 +96,8 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
+  res.setHeader('Cache-Control', 'private, no-store');
+
   // Caso 0: o cliente enviou um corpo que não é um JSON válido
   // (ex: vírgula sobrando, chaves/colchetes desbalanceados, aspas
   // não fechadas). Isto acontece ANTES de qualquer rota, controller
@@ -124,6 +127,7 @@ export function errorHandler(
       status: 'error',
       message: err.message,
     };
+    if (err.code !== undefined) body.code = err.code;
 
     if (err.details !== undefined) {
       body.details = err.details;

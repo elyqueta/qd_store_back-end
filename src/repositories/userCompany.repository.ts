@@ -48,6 +48,14 @@ async function create(data: CreateUserCompanyData): Promise<UserCompany> {
   }
 }
 
+async function findUserIdByEmail(email: string): Promise<string | null> {
+  const result = await query<{ id: string }>(
+    'SELECT id FROM users WHERE email = $1 LIMIT 1',
+    [email]
+  );
+  return result.rows[0]?.id ?? null;
+}
+
 async function findByCompany(companyId: string): Promise<UserCompany[]> {
   const result = await query<UserCompanyRow>(
     `SELECT id_user, id_company, role, created_at
@@ -126,6 +134,7 @@ async function isMember(companyId: string, userId: string): Promise<boolean> {
 
 export const userCompanyRepository = {
   create,
+  findUserIdByEmail,
   findByCompany,
   updateRole,
   remove,

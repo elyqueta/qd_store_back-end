@@ -30,7 +30,8 @@ const router = Router({ mergeParams: true });
  * /api/v1/companies/{companyId}/users:
  *   post:
  *     tags: [Company Users]
- *     summary: Associa um utilizador a uma empresa
+ *     summary: Associa um utilizador a uma empresa por email ou UUID legado
+ *     description: Recomendado enviar email; a resolução ocorre apenas nesta operação, permitida ao proprietário da empresa ou a um administrador. Não existe endpoint de pesquisa de utilizadores.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -55,7 +56,7 @@ const router = Router({ mergeParams: true });
  *                 status: { type: string, example: success }
  *                 data: { $ref: '#/components/schemas/UserCompany' }
  *       404:
- *         description: Empresa ou utilizador não encontrados.
+ *         description: Empresa ou conta associada ao email/UUID não encontrados.
  *         content:
  *           application/json:
  *             schema:

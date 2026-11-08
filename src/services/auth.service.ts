@@ -47,6 +47,7 @@ function toSafeUser(user: UserWithPasswordHash): User {
     deactivatedAt: user.deactivatedAt,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
+    profilePhoto: user.profilePhoto,
   };
 }
 

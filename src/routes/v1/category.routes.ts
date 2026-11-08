@@ -3,6 +3,7 @@ import { categoryController } from '../../controllers/category.controller';
 import { validate } from '../../middlewares/validate';
 import { authenticate } from '../../middlewares/authenticate';
 import { requireAdmin } from '../../middlewares/requireAdmin';
+import { publicReferenceCache } from '../../middlewares/apiCachePolicy';
 import {
   categoryIdParamSchema,
   createCategorySchema,
@@ -93,7 +94,7 @@ router.post(
  *                   type: array
  *                   items: { $ref: '#/components/schemas/Category' }
  */
-router.get('/', categoryController.findAll);
+router.get('/', publicReferenceCache, categoryController.findAll);
 
 /**
  * @openapi
@@ -123,7 +124,12 @@ router.get('/', categoryController.findAll);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id', validate({ params: categoryIdParamSchema }), categoryController.findById);
+router.get(
+  '/:id',
+  publicReferenceCache,
+  validate({ params: categoryIdParamSchema }),
+  categoryController.findById
+);
 
 /**
  * @openapi

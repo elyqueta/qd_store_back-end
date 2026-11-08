@@ -82,4 +82,14 @@ export interface CreateCompanyData {
   name: string;
   nif: string;
   sector?: string | null;
+  role: string;
+  idempotencyKey?: string;
+  requestHash?: string;
+}
+
+export interface CompanyAssociation {
+  userId: string;
+  companyId: string;
+  role: string | null;
+  createdAt: Date;
 }

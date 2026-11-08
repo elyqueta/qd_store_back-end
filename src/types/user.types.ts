@@ -43,6 +43,20 @@ export interface UserRow {
   deactivated_at: Date | null;
   created_at: Date;
   updated_at: Date;
+  profile_photo_url: string | null;
+  profile_photo_cloudinary_public_id: string | null;
+  profile_photo_width: number | null;
+  profile_photo_height: number | null;
+  profile_photo_format: string | null;
+  profile_photo_size_bytes: number | null;
+}
+
+export interface ProfilePhoto {
+  url: string;
+  width: number;
+  height: number;
+  format: string;
+  sizeBytes: number;
 }
 
 /**
@@ -61,6 +75,7 @@ export interface User {
   deactivatedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  profilePhoto: ProfilePhoto | null;
 }
 
 /**

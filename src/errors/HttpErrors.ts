@@ -32,8 +32,8 @@ export class UnauthorizedError extends AppError {
 
 /** 403 — o cliente está autenticado, mas não tem permissão para a ação. */
 export class ForbiddenError extends AppError {
-  constructor(message = 'Acesso negado.', details?: unknown) {
-    super(message, 403, details);
+  constructor(message = 'Acesso negado.', details?: unknown, code?: string) {
+    super(message, 403, details, code);
   }
 }
 
@@ -49,8 +49,19 @@ export class NotFoundError extends AppError {
  * Exemplo típico: tentar cadastrar um NIF que já existe.
  */
 export class ConflictError extends AppError {
-  constructor(message = 'Conflito com o estado atual do recurso.', details?: unknown) {
-    super(message, 409, details);
+  constructor(
+    message = 'Conflito com o estado atual do recurso.',
+    details?: unknown,
+    code?: string
+  ) {
+    super(message, 409, details, code);
+  }
+}
+
+/** 503 — um serviço externo necessário está temporariamente indisponível. */
+export class ServiceUnavailableError extends AppError {
+  constructor(message = 'Serviço temporariamente indisponível.', details?: unknown) {
+    super(message, 503, details);
   }
 }
 

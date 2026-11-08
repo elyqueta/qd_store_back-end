@@ -12,6 +12,8 @@ import { companySchemas } from './swagger-schemas/company.schemas';
 import { locationSchemas } from './swagger-schemas/location.schemas';
 import { addressSchemas } from './swagger-schemas/address.schemas';
 import { productSchemas } from './swagger-schemas/product.schemas';
+import { adminUserSchemas } from './swagger-schemas/admin-user.schemas';
+import { quoteRequestSchemas } from './swagger-schemas/quote-request.schemas';
 
 const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
   openapi: '3.0.0',
@@ -43,6 +45,20 @@ const swaggerDefinition: swaggerJsdoc.OAS3Definition = {
       ...locationSchemas,
       ...addressSchemas,
       ...productSchemas,
+      ...adminUserSchemas,
+      ...quoteRequestSchemas,
+      UpdateUserProfileInput: {
+        type: 'object',
+        properties: {
+          fullName: { type: 'string', maxLength: 150 },
+          email: { type: 'string', format: 'email' },
+          phone: { type: 'string', minLength: 9, maxLength: 20 },
+          currentPassword: { type: 'string', format: 'password' },
+          newPassword: { type: 'string', format: 'password' },
+          removePhoto: { type: 'boolean' },
+          photo: { type: 'string', format: 'binary' },
+        },
+      },
     },
 
     securitySchemes: {

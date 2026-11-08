@@ -12,6 +12,13 @@ import cartRoutes from './cart.routes';
 import orderRoutes from './order.routes';
 import wishlistRoutes from './wishlist.routes';
 import notificationRoutes from './notification.routes';
+import userRoutes from './user.routes';
+import iconRoutes from './icon.routes';
+import highlightRoutes from './highlight.routes';
+import serviceRoutes from './service.routes';
+import adminUserRoutes from './adminUser.routes';
+import quoteRequestRoutes from './quoteRequest.routes';
+import adminQuoteRequestRoutes from './adminQuoteRequest.routes';
 
 /**
  * Router agregador da versão 1 da API.
@@ -34,6 +41,8 @@ router.use('/auth', authRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/companies', companyRoutes);
 router.use('/admin', adminRoutes);
+router.use('/admin/users', adminUserRoutes);
+router.use('/admin/quote-requests', adminQuoteRequestRoutes);
 router.use('/locations', locationRoutes);
 router.use('/addresses', addressRoutes);
 router.use('/products', productRoutes);
@@ -43,5 +52,10 @@ router.use('/cart', cartRoutes);
 router.use('/orders', orderRoutes);
 router.use('/wishlist', wishlistRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/users', userRoutes);
+router.use('/icons', iconRoutes);
+router.use('/highlights', highlightRoutes);
+router.use('/services', serviceRoutes);
+router.use('/quote-requests', quoteRequestRoutes);
 
 export default router;

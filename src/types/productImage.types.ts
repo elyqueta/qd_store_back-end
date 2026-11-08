@@ -21,6 +21,7 @@ export interface ProductImageRow {
   height: number | null;
   format: string | null;
   size_bytes: number | null;
+  cloudinary_public_id: string | null;
 }
 
 export interface ProductImage {
@@ -37,6 +38,7 @@ export interface ProductImage {
 export interface CreateProductImageData {
   productId: string;
   url: string;
+  cloudinaryPublicId?: string | null;
   displayOrder?: number;
   width?: number | null;
   height?: number | null;

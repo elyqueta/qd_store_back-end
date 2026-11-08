@@ -5,10 +5,25 @@ export const createOrderSchema = z
     deliveryTypeId: z.uuid('deliveryTypeId deve ser um UUID válido.'),
     paymentMethodId: z.uuid('paymentMethodId deve ser um UUID válido.'),
     addressId: z.uuid('addressId deve ser um UUID válido.'),
-    companyId: z.uuid('companyId deve ser um UUID válido.').optional(),
+    companyId: z.uuid('companyId deve ser um UUID válido.').nullable().optional(),
+    companySnapshot: z
+      .object({
+        name: z.string().trim().min(1).max(200),
+        nif: z
+          .string()
+          .trim()
+          .regex(/^[0-9]{9}$/, 'nif deve conter exactamente 9 dígitos.'),
+        role: z.string().trim().min(1).max(100),
+      })
+      .strict()
+      .optional(),
     notes: z.string().trim().max(1000, 'notes deve ter no máximo 1000 caracteres.').optional(),
   })
-  .strict();
+  .strict()
+  .refine((data) => !(data.companyId && data.companySnapshot), {
+    message: 'Escolha companyId ou companySnapshot, não ambos.',
+    path: ['companyId'],
+  });
 
 export const orderIdParamSchema = z.object({ id: z.uuid('id deve ser um UUID válido.') }).strict();
 

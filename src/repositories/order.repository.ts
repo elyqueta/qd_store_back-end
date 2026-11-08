@@ -58,7 +58,7 @@ function toOrderHistoryEntry(row: OrderHistoryRow): OrderHistoryEntry {
   };
 }
 
-const ORDER_COLUMNS = `id, reference, id_user, id_company, type, status, id_payment_method,
+const ORDER_COLUMNS = `id, reference, id_user, id_company, company_snapshot, type, status, id_payment_method,
   id_delivery_type, notes, total, created_at, updated_at`;
 
 async function createFromCart(data: CreateOrderData): Promise<string> {
@@ -122,13 +122,14 @@ async function createFromCart(data: CreateOrderData): Promise<string> {
 
       const orderResult = await client.query<{ id: string }>(
         `INSERT INTO orders
-           (reference, id_user, id_company, type, status, id_payment_method, id_delivery_type, notes, total)
-         VALUES ($1, $2, $3, $4, 'processing', $5, $6, $7, $8)
+           (reference, id_user, id_company, company_snapshot, type, status, id_payment_method, id_delivery_type, notes, total)
+         VALUES ($1, $2, $3, $4, $5, 'processing', $6, $7, $8, $9)
          RETURNING id`,
         [
           reference,
           data.userId,
           data.companyId,
+          data.companySnapshot,
           data.type,
           data.paymentMethodId,
           data.deliveryTypeId,
@@ -272,7 +273,7 @@ async function findById(id: string): Promise<Order | null> {
       payment_status: OrderPaymentStatus | null;
     }
   >(
-    `SELECT orders.id, orders.reference, orders.id_user, orders.id_company, orders.type,
+    `SELECT orders.id, orders.reference, orders.id_user, orders.id_company, orders.company_snapshot, orders.type,
             orders.status, orders.id_payment_method, orders.id_delivery_type, orders.notes,
             orders.total, orders.created_at, orders.updated_at,
             latest_payment.id AS payment_id,
@@ -331,6 +332,7 @@ async function findById(id: string): Promise<Order | null> {
     total: Number(row.total),
     userId: row.id_user,
     companyId: row.id_company,
+    companySnapshot: row.company_snapshot,
     paymentMethodId: row.id_payment_method,
     deliveryTypeId: row.id_delivery_type,
     // O preço de entrega fica congelado na diferença entre o total e os subtotais gravados.

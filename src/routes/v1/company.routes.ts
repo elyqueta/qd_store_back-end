@@ -6,7 +6,9 @@ import { requireAdmin } from '../../middlewares/requireAdmin';
 import { requireAdminOrCompanyOwner } from '../../middlewares/requireAdminOrCompanyOwner';
 import {
   companyIdParamSchema,
+  companyMineQuerySchema,
   createCompanySchema,
+  resolveCompanyQuerySchema,
   updateCompanySchema,
 } from '../../validators/company.validator';
 import userCompanyRoutes from './userCompany.routes';
@@ -36,6 +38,12 @@ router.use(authenticate);
  *     summary: Regista uma nova empresa (conta B2B)
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: Idempotency-Key
+ *         required: false
+ *         schema: { type: string, format: uuid }
+ *         description: Chave de idempotência para impedir duplicação da criação da empresa.
  *     requestBody:
  *       required: true
  *       content:
@@ -99,6 +107,61 @@ router.get('/', requireAdmin, companyController.findAll);
 
 /**
  * @openapi
+ * /api/v1/companies/mine:
+ *   get:
+ *     tags: [Companies]
+ *     summary: Lista as empresas do utilizador autenticado com os respectivos membros
+ *     description: Devolve empresas em que o utilizador autenticado é proprietário ou membro. Empresas inactivas e banidas continuam incluídas quando existe essa relação. A lista users contém apenas associações existentes em user_company; uma empresa do proprietário continua acessível mesmo sem uma associação do proprietário nessa tabela.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Empresas próprias ou associadas, sem duplicados.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [status, data]
+ *               properties:
+ *                 status: { type: string, example: success }
+ *                 data:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/CompanyWithUsers' }
+ *       401:
+ *         description: Token de acesso ausente, inválido ou expirado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       422:
+ *         description: A rota não aceita parâmetros de pesquisa, incluindo userId.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/mine', validate({ query: companyMineQuerySchema }), companyController.findMine);
+/**
+ * @openapi
+ * /api/v1/companies/resolve:
+ *   get:
+ *     tags: [Companies]
+ *     summary: Resolve uma empresa por NIF sem expor dados não autorizados
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: nif
+ *         required: true
+ *         schema: { type: string, pattern: '^[0-9]{9}$' }
+ *     responses:
+ *       200: { description: Estado mine, exists_not_member ou not_found. }
+ *       401: { description: Não autenticado. }
+ *       422: { description: NIF inválido. }
+ */
+router.get('/resolve', validate({ query: resolveCompanyQuerySchema }), companyController.resolve);
+
+/**
+ * @openapi
  * /api/v1/companies/{id}:
  *   get:
  *     tags: [Companies]
@@ -127,7 +190,12 @@ router.get('/', requireAdmin, companyController.findAll);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id', validate({ params: companyIdParamSchema }), requireAdminOrCompanyOwner('id'), companyController.findById);
+router.get(
+  '/:id',
+  validate({ params: companyIdParamSchema }),
+  requireAdminOrCompanyOwner('id'),
+  companyController.findById
+);
 
 /**
  * @openapi

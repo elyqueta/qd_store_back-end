@@ -39,19 +39,26 @@ services:
       # fonte da documentação.
       NODE_ENV: development
       PORT: "1914"
-      CORS_ALLOW_LOCALHOST: ${CORS_ALLOW_LOCALHOST:-false}
+      # Em desenvolvimento, aceitar qualquer origem localhost/127.0.0.1
+      # para suportar Angular em portas como 4200, 4300 ou 5173.
+      CORS_ALLOW_LOCALHOST: ${CORS_ALLOW_LOCALHOST:-true}
       # "postgres" é o hostname do serviço na rede do Compose; a 5432
       # é a porta INTERNA do container (não a 5433 publicada no host).
       DATABASE_URL: postgres://qd_user:qd_password@postgres:5432/qd_store
       CORS_ORIGIN: http://localhost:1914,http://localhost:5173,https://qd-store-one.vercel.app
+      # O rate limit global só é aplicado em produção; estes valores
+      # continuam definidos para satisfazer a configuração tipada.
       RATE_LIMIT_WINDOW_MS: "900000"
-      RATE_LIMIT_MAX: "20"
+      RATE_LIMIT_MAX: "2000"
       # Default de desenvolvimento; em produção exporte JWT_SECRET no
       # ambiente do host antes de subir.
       JWT_SECRET: ${JWT_SECRET:-qd_store_dev_only_jwt_secret_mude_em_producao_2026}
       JWT_ACCESS_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_IN_DAYS: "7"
       BCRYPT_SALT_ROUNDS: "12"
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
     ports:
       - "127.0.0.1:1914:1914"
       - "[::1]:1914:1914"

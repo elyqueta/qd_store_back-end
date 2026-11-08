@@ -14,6 +14,9 @@ export const productSchemas: OpenApiSchemas = {
       limit: { type: 'integer', example: 20 },
       total: { type: 'integer', example: 137 },
       totalPages: { type: 'integer', example: 7 },
+      currentPage: { type: 'integer', example: 1 },
+      totalItems: { type: 'integer', example: 137 },
+      hasNextPage: { type: 'boolean', example: true },
     },
   },
   /**
@@ -55,18 +58,6 @@ export const productSchemas: OpenApiSchemas = {
       price: { type: 'number', example: 450000 },
       originalPrice: { type: 'number', example: 520000 },
       badge: { type: 'string', maxLength: 50, example: 'Promoção' },
-      mainImage: { $ref: '#/components/schemas/CreateMainProductImageInput' },
-    },
-  },
-  CreateMainProductImageInput: {
-    type: 'object',
-    required: ['url'],
-    properties: {
-      url: { type: 'string', example: 'https://cdn.exemplo.co.ao/produtos/abc.jpg' },
-      width: { type: 'integer', example: 1200 },
-      height: { type: 'integer', example: 900 },
-      format: { type: 'string', maxLength: 10, example: 'jpg' },
-      sizeBytes: { type: 'integer', example: 204800 },
     },
   },
   UpdateProductInput: {
@@ -95,9 +86,7 @@ export const productSchemas: OpenApiSchemas = {
   },
   CreateProductImageInput: {
     type: 'object',
-    required: ['url'],
     properties: {
-      url: { type: 'string', example: 'https://cdn.exemplo.co.ao/produtos/abc.jpg' },
       displayOrder: { type: 'integer', example: 0 },
       width: { type: 'integer', example: 1200 },
       height: { type: 'integer', example: 900 },
@@ -108,7 +97,6 @@ export const productSchemas: OpenApiSchemas = {
   UpdateProductImageInput: {
     type: 'object',
     properties: {
-      url: { type: 'string' },
       displayOrder: { type: 'integer' },
       width: { type: 'integer', nullable: true },
       height: { type: 'integer', nullable: true },

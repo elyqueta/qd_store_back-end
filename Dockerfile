@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # ---------- Stage 1: dependências ----------
 # bcrypt é um módulo nativo (compilado via node-gyp) e NÃO tem
 # binário pré-compilado para Alpine/musl — precisa de toolchain de

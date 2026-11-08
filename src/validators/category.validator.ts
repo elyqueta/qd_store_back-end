@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isCatalogIcon } from '../data/icon-catalog';
 
 /**
  * Por que centralizar `label` e `icon` como schemas reutilizáveis
@@ -23,7 +24,15 @@ const labelSchema = z
  * rejeitaria de qualquer forma — só que com um erro melhor,
  * detectado ANTES de tocar no banco.
  */
-const iconSchema = z.string().trim().max(10, 'icon deve ter no máximo 10 caracteres.');
+const iconSchema = z
+  .string()
+  .trim()
+  .max(60, 'icon deve ter no máximo 60 caracteres.')
+  .regex(
+    /^(brands\/)?[a-z0-9]+(-[a-z0-9]+)*$/,
+    'icon deve estar em kebab-case e pode usar o prefixo brands/.'
+  )
+  .refine(isCatalogIcon, 'icon não existe no catálogo de ícones.');
 
 /**
  * Schema de criação.
@@ -33,10 +42,12 @@ const iconSchema = z.string().trim().max(10, 'icon deve ter no máximo 10 caract
  * decidido. `id`, `createdAt` e `updatedAt` também estão ausentes
  * pelo mesmo motivo: são responsabilidade do banco de dados.
  */
-export const createCategorySchema = z.object({
+export const createCategorySchema = z
+  .object({
   label: labelSchema,
   icon: iconSchema.optional(),
-});
+  })
+  .strict();
 
 /**
  * Schema de atualização parcial (PATCH).
@@ -63,6 +74,7 @@ export const updateCategorySchema = z
     label: labelSchema.optional(),
     icon: iconSchema.nullable().optional(),
   })
+  .strict()
   .refine((data) => Object.keys(data).length > 0, {
     message: 'Pelo menos um campo (label ou icon) deve ser enviado para atualização.',
   });

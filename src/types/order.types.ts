@@ -9,6 +9,7 @@ export interface OrderRow {
   reference: string;
   id_user: string;
   id_company: string | null;
+  company_snapshot: CompanySnapshot | null;
   type: OrderType;
   status: OrderStatus;
   id_payment_method: string;
@@ -88,6 +89,7 @@ export interface OrderSummary {
 export interface Order extends Omit<OrderSummary, 'itemsCount'> {
   userId: string;
   companyId: string | null;
+  companySnapshot: CompanySnapshot | null;
   paymentMethodId: string;
   deliveryTypeId: string;
   deliveryPrice: number;
@@ -107,6 +109,7 @@ export interface OrderFilters {
 export interface CreateOrderData {
   userId: string;
   companyId: string | null;
+  companySnapshot: CompanySnapshot | null;
   type: OrderType;
   paymentMethodId: string;
   deliveryTypeId: string;
@@ -114,6 +117,14 @@ export interface CreateOrderData {
   notes: string | null;
   addressId: string;
   address: OrderAddress;
+  idempotencyKey?: string;
+  requestHash?: string;
+}
+
+export interface CompanySnapshot {
+  name: string;
+  nif: string;
+  role: string;
 }
 
 export type OrderListResult = PaginatedResult<OrderSummary>;

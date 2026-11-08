@@ -10,7 +10,7 @@ import {
 
 const create = asyncHandler(
   async (req: Request<ProductIdOnlyParam, unknown, CreateProductImageInput>, res: Response) => {
-    const image = await productImageService.create(req.params.productId, req.body);
+    const image = await productImageService.create(req.params.productId, req.body, req.file);
 
     res.status(201).json({ status: 'success', data: image });
   }
@@ -24,7 +24,12 @@ const findAll = asyncHandler(async (req: Request<ProductIdOnlyParam>, res: Respo
 
 const update = asyncHandler(
   async (req: Request<ProductImageParam, unknown, UpdateProductImageInput>, res: Response) => {
-    const image = await productImageService.update(req.params.productId, req.params.id, req.body);
+    const image = await productImageService.update(
+      req.params.productId,
+      req.params.id,
+      req.body,
+      req.file
+    );
 
     res.status(200).json({ status: 'success', data: image });
   }

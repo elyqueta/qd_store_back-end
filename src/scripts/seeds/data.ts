@@ -167,10 +167,10 @@ export const SEED_USER_COMPANIES: SeedUserCompany[] = [
 ];
 
 export const SEED_CATEGORIES: SeedCategory[] = [
-  { label: 'Portáteis', icon: '💻' },
-  { label: 'Smartphones', icon: '📱' },
-  { label: 'Acessórios', icon: '🎧' },
-  { label: 'Componentes', icon: '🔧' },
+  { label: 'Portáteis', icon: 'laptop' },
+  { label: 'Smartphones', icon: 'mobile-screen' },
+  { label: 'Acessórios', icon: 'headphones' },
+  { label: 'Componentes', icon: 'screwdriver-wrench' },
 ];
 
 export const SEED_PRODUCTS: SeedProduct[] = [

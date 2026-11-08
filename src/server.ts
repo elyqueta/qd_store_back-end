@@ -2,9 +2,20 @@ import app from './app';
 import { env } from './config/env';
 import { closePool } from './database/pool';
 import { logger } from './config/logger';
+import { processCloudinaryDeletionQueue } from './services/cloudinaryDeletionQueue.service';
 
 const server = app.listen(env.PORT, () => {
   logger.info(`QD Store Backend rodando em http://localhost:${env.PORT} [${env.NODE_ENV}]`);
+});
+
+const cloudinaryDeletionInterval = setInterval(() => {
+  void processCloudinaryDeletionQueue().catch((error: unknown) => {
+    logger.error({ err: error }, 'Falha ao consultar a fila de remoção do Cloudinary.');
+  });
+}, 60_000);
+cloudinaryDeletionInterval.unref();
+void processCloudinaryDeletionQueue().catch((error: unknown) => {
+  logger.error({ err: error }, 'Falha ao consultar a fila de remoção do Cloudinary.');
 });
 
 /**
@@ -21,6 +32,7 @@ const server = app.listen(env.PORT, () => {
  */
 function shutdown(signal: string): void {
   logger.info(`${signal} recebido. Encerrando graciosamente...`);
+  clearInterval(cloudinaryDeletionInterval);
 
   server.close((err) => {
     if (err) {

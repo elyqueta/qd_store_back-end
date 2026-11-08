@@ -1,4 +1,12 @@
-import { ConflictError, ForbiddenError, NotFoundError } from '../errors';
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../errors';
+import {
+  beginOperation,
+  completeOperation,
+  failOperation,
+  getOperation,
+  hashRequest,
+  normalizeIdempotencyKey,
+} from '../repositories/idempotency.repository';
 import { orderRepository } from '../repositories/order.repository';
 import { Order, OrderFilters, OrderListResult } from '../types/order.types';
 import { PaginationParams } from '../types/pagination.types';
@@ -10,7 +18,147 @@ import { paymentMethodService } from './paymentMethod.service';
 import { userCompanyRepository } from '../repositories/userCompany.repository';
 import { notificationService } from './notification.service';
 
-async function create(userId: string, input: CreateOrderInput): Promise<Order> {
+async function create(
+  userId: string,
+  input: CreateOrderInput,
+  idempotencyKey?: string
+): Promise<Order> {
+  const normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+  const requestHash = hashRequest({ userId, ...input, companySnapshot: input.companySnapshot ?? null });
+
+  if (normalizedKey) {
+    const existingOperation = await getOperation(userId, 'order_create', normalizedKey);
+
+    if (existingOperation) {
+      if (existingOperation.status === 'in_progress') {
+        throw new ConflictError(
+          'A operação de criação da encomenda já está em curso.',
+          undefined,
+          'ORDER_CREATION_ALREADY_PROCESSED'
+        );
+      }
+
+      if (existingOperation.status === 'completed') {
+        if (existingOperation.requestHash !== requestHash) {
+          throw new ConflictError(
+            'Já existe uma operação idempotente para a mesma chave com payload diferente.',
+            undefined,
+            'ORDER_CREATION_ALREADY_PROCESSED'
+          );
+        }
+
+        return existingOperation.responsePayload as Order;
+      }
+
+      if (existingOperation.requestHash !== requestHash) {
+        throw new ConflictError(
+          'Já existe uma operação idempotente para a mesma chave com payload diferente.',
+          undefined,
+          'ORDER_CREATION_ALREADY_PROCESSED'
+        );
+      }
+    }
+
+    const started = await beginOperation(userId, 'order_create', normalizedKey, requestHash);
+    if (!started) {
+      const operation = await getOperation(userId, 'order_create', normalizedKey);
+      if (!operation) {
+        throw new ValidationError('Operação de idempotência inválida.');
+      }
+
+      if (operation.status === 'in_progress') {
+        throw new ConflictError(
+          'A operação de criação da encomenda já está em curso.',
+          undefined,
+          'ORDER_CREATION_ALREADY_PROCESSED'
+        );
+      }
+
+      if (operation.status === 'completed') {
+        if (operation.requestHash !== requestHash) {
+          throw new ConflictError(
+            'Já existe uma operação idempotente para a mesma chave com payload diferente.',
+            undefined,
+            'ORDER_CREATION_ALREADY_PROCESSED'
+          );
+        }
+
+        return operation.responsePayload as Order;
+      }
+    }
+
+    try {
+      const [address, deliveryType, paymentMethod] = await Promise.all([
+        addressService.findOwnedById(userId, input.addressId),
+        deliveryTypeService.findById(input.deliveryTypeId),
+        paymentMethodService.findById(input.paymentMethodId),
+      ]);
+      let companyId: string | null = null;
+      let type: 'personal' | 'business' = 'personal';
+      let companySnapshot = input.companySnapshot ?? null;
+
+      if (input.companyId) {
+        const company = await companyService.findById(input.companyId);
+        if (company.status !== 'active') {
+          throw new ConflictError('Esta empresa não está disponível para encomendas.');
+        }
+        if (!(await userCompanyRepository.isMember(company.id, userId))) {
+          throw new ForbiddenError(
+            'Não está autorizado a utilizar esta empresa na encomenda.',
+            undefined,
+            'ORDER_COMPANY_NOT_ALLOWED'
+          );
+        }
+        companyId = company.id;
+        type = 'business';
+      } else if (companySnapshot) {
+        type = 'business';
+        companySnapshot = { ...companySnapshot, nif: companySnapshot.nif.replace(/\s+/g, '') };
+      }
+
+      const orderId = await orderRepository.createFromCart({
+        userId,
+        companyId,
+        companySnapshot,
+        type,
+        paymentMethodId: paymentMethod.id,
+        deliveryTypeId: deliveryType.id,
+        deliveryPrice: deliveryType.price,
+        notes: input.notes ?? null,
+        addressId: address.id,
+        address: {
+          province: address.province,
+          municipality: address.municipality,
+          neighborhood: address.neighborhood,
+          address: address.address,
+          reference: address.reference,
+          latitude: address.latitude,
+          longitude: address.longitude,
+        },
+      });
+      const order = await orderRepository.findOwnedById(orderId);
+      if (!order) {
+        throw new Error('A encomenda criada não foi encontrada.');
+      }
+
+      await completeOperation(started!.id, 'order', order.id, order);
+
+      try {
+        await notificationService.notify(
+          userId,
+          'order',
+          `A sua encomenda ${order.reference} foi registada.`
+        );
+      } catch (error) {
+        console.error('Não foi possível criar a notificação da encomenda:', error);
+      }
+      return order;
+    } catch (error) {
+      await failOperation(started!.id);
+      throw error;
+    }
+  }
+
   const [address, deliveryType, paymentMethod] = await Promise.all([
     addressService.findOwnedById(userId, input.addressId),
     deliveryTypeService.findById(input.deliveryTypeId),
@@ -18,22 +166,31 @@ async function create(userId: string, input: CreateOrderInput): Promise<Order> {
   ]);
   let companyId: string | null = null;
   let type: 'personal' | 'business' = 'personal';
+  let companySnapshot = input.companySnapshot ?? null;
 
-  if (input.companyId !== undefined) {
+  if (input.companyId) {
     const company = await companyService.findById(input.companyId);
     if (company.status !== 'active') {
       throw new ConflictError('Esta empresa não está disponível para encomendas.');
     }
     if (!(await userCompanyRepository.isMember(company.id, userId))) {
-      throw new ForbiddenError('Não pertence a esta empresa.');
+      throw new ForbiddenError(
+        'Não está autorizado a utilizar esta empresa na encomenda.',
+        undefined,
+        'ORDER_COMPANY_NOT_ALLOWED'
+      );
     }
     companyId = company.id;
     type = 'business';
+  } else if (companySnapshot) {
+    type = 'business';
+    companySnapshot = { ...companySnapshot, nif: companySnapshot.nif.replace(/\s+/g, '') };
   }
 
   const orderId = await orderRepository.createFromCart({
     userId,
     companyId,
+    companySnapshot,
     type,
     paymentMethodId: paymentMethod.id,
     deliveryTypeId: deliveryType.id,

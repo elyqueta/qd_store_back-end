@@ -1,4 +1,5 @@
 import type { CreateProductImageData, ProductImage } from './productImage.types';
+import type { ProductSpecification } from './productSpecification.types';
 
 /**
  * Tipos relacionados à entidade PRODUCT.
@@ -59,6 +60,11 @@ export interface Product {
   mainImage: ProductImage | null;
 }
 
+export interface ProductDetails extends Product {
+  images?: ProductImage[];
+  specifications?: ProductSpecification[];
+}
+
 /**
  * Dados que o REPOSITORY precisa para inserir um produto.
  *
@@ -87,4 +93,10 @@ export interface CreateProductData {
 export interface ProductFilters {
   categoryId?: string;
   status?: ProductStatus;
+  excludeId?: string;
+  search?: string;
+  sort?: 'createdAt_desc' | 'createdAt_asc' | 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc';
+  priceMin?: number;
+  priceMax?: number;
+  availableOnly?: boolean;
 }

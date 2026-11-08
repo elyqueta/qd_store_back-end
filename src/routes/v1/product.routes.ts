@@ -3,10 +3,13 @@ import { productController } from '../../controllers/product.controller';
 import { validate } from '../../middlewares/validate';
 import { authenticate } from '../../middlewares/authenticate';
 import { requireAdmin } from '../../middlewares/requireAdmin';
+import { publicReadCache } from '../../middlewares/apiCachePolicy';
+import { uploadProductImage } from '../../middlewares/productImageUpload';
 import {
   createProductSchema,
   listProductsQuerySchema,
   productIdParamSchema,
+  productDetailQuerySchema,
   updateProductSchema,
 } from '../../validators/product.validator';
 import productImageRoutes from './productImage.routes';
@@ -35,9 +38,21 @@ const router = Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreateProductInput'
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [categoryId, name, price]
+ *             properties:
+ *               categoryId: { type: string, format: uuid }
+ *               name: { type: string }
+ *               description: { type: string }
+ *               price: { type: number }
+ *               originalPrice: { type: number }
+ *               badge: { type: string }
+ *               image: { type: string, format: binary }
  *     responses:
  *       201:
- *         description: Produto criado com sucesso. Se `mainImage` for enviada, fica associada com `displayOrder` 0.
+ *         description: Produto criado com sucesso. Se `image` for enviada, é enviada ao Cloudinary e associada como imagem principal.
  *         content:
  *           application/json:
  *             schema:
@@ -74,6 +89,7 @@ router.post(
   '/',
   authenticate,
   requireAdmin,
+  uploadProductImage,
   validate({ body: createProductSchema }),
   productController.create
 );
@@ -97,10 +113,31 @@ router.post(
  *       - in: query
  *         name: status
  *         schema: { type: string, enum: [active, inactive, out_of_stock] }
+ *       - in: query
+ *         name: search
+ *         description: Pesquisa parcial no nome e descrição.
+ *         schema: { type: string, maxLength: 200 }
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, enum: [createdAt_desc, createdAt_asc, name_asc, name_desc, price_asc, price_desc], default: createdAt_desc }
+ *       - in: query
+ *         name: priceMin
+ *         schema: { type: number, minimum: 0 }
+ *       - in: query
+ *         name: priceMax
+ *         schema: { type: number, minimum: 0 }
+ *       - in: query
+ *         name: availableOnly
+ *         description: Filtra produtos com status active; o modelo actual não tem stock quantitativo.
+ *         schema: { type: boolean }
+ *       - in: query
+ *         name: excludeId
+ *         description: Exclui um produto (por exemplo, o produto da página de detalhe).
+ *         schema: { type: string, format: uuid }
  *     description: Cada produto inclui `mainImage` (a imagem com menor `displayOrder`) ou `null` se ainda não tiver imagem.
  *     responses:
  *       200:
- *         description: Lista paginada de produtos.
+ *         description: Lista paginada de produtos; paginação inclui page, limit, total, totalPages e aliases currentPage, totalItems e hasNextPage.
  *         content:
  *           application/json:
  *             schema:
@@ -112,7 +149,7 @@ router.post(
  *                   items: { $ref: '#/components/schemas/Product' }
  *                 pagination: { $ref: '#/components/schemas/Pagination' }
  */
-router.get('/', validate({ query: listProductsQuerySchema }), productController.findAll);
+router.get('/', publicReadCache, validate({ query: listProductsQuerySchema }), productController.findAll);
 
 /**
  * @openapi
@@ -125,6 +162,11 @@ router.get('/', validate({ query: listProductsQuerySchema }), productController.
  *         name: id
  *         required: true
  *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: include
+ *         description: Includes opcionais separados por vírgula; propriedades não pedidas não são adicionadas.
+ *         schema: { type: string, enum: [images, specifications, 'images,specifications'] }
+ *         example: images,specifications
  *     responses:
  *       200:
  *         description: Produto encontrado.
@@ -134,7 +176,7 @@ router.get('/', validate({ query: listProductsQuerySchema }), productController.
  *               type: object
  *               properties:
  *                 status: { type: string, example: success }
- *                 data: { $ref: '#/components/schemas/Product' }
+ *                 data: { $ref: '#/components/schemas/ProductDetails' }
  *       404:
  *         description: Produto não encontrado.
  *         content:
@@ -142,7 +184,12 @@ router.get('/', validate({ query: listProductsQuerySchema }), productController.
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id', validate({ params: productIdParamSchema }), productController.findById);
+router.get(
+  '/:id',
+  publicReadCache,
+  validate({ params: productIdParamSchema, query: productDetailQuerySchema }),
+  productController.findById
+);
 
 /**
  * @openapi

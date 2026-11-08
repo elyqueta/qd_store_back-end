@@ -1,4 +1,5 @@
 import { companyRepository } from '../repositories/company.repository';
+import { adminRepository, AdminDashboardSummary } from '../repositories/admin.repository';
 import { CompanyWithUsers } from '../types/company.types';
 import { OrderFilters, OrderListResult, Order } from '../types/order.types';
 import { PaginationParams } from '../types/pagination.types';
@@ -16,6 +17,10 @@ import { Payment } from '../types/payment.types';
  */
 async function listCompaniesWithUsers(): Promise<CompanyWithUsers[]> {
   return companyRepository.findAllWithUsers();
+}
+
+async function getDashboardSummary(): Promise<AdminDashboardSummary> {
+  return adminRepository.getDashboardSummary();
 }
 
 async function listOrders(
@@ -59,6 +64,7 @@ async function rejectPayment(
 
 export const adminService = {
   listCompaniesWithUsers,
+  getDashboardSummary,
   listOrders,
   findOrderById,
   updateOrderStatus,

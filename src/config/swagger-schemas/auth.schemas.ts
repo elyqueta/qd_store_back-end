@@ -20,6 +20,17 @@ export const authSchemas: OpenApiSchemas = {
       deactivatedAt: { type: 'string', format: 'date-time', nullable: true },
       createdAt: { type: 'string', format: 'date-time' },
       updatedAt: { type: 'string', format: 'date-time' },
+      profilePhoto: {
+        nullable: true,
+        type: 'object',
+        properties: {
+          url: { type: 'string', format: 'uri' },
+          width: { type: 'integer' },
+          height: { type: 'integer' },
+          format: { type: 'string' },
+          sizeBytes: { type: 'integer' },
+        },
+      },
     },
   },
   /**

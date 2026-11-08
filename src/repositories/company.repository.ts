@@ -5,6 +5,7 @@ import {
   CompanyWithUsers,
   CompanyWithUsersRow,
   CreateCompanyData,
+  CompanyAssociation,
 } from '../types/company.types';
 import { UpdateCompanyInput } from '../validators/company.validator';
 import { ConflictError } from '../errors';
@@ -64,7 +65,9 @@ function toCompanyWithUsers(row: CompanyWithUsersRow): CompanyWithUsers {
  * updated_at) na mesma viagem ao banco que fez o INSERT. Mesma
  * técnica já usada em category.repository.ts.
  */
-async function create(data: CreateCompanyData): Promise<Company> {
+async function create(
+  data: CreateCompanyData
+): Promise<{ company: Company; association: CompanyAssociation }> {
   const client = await getClient();
 
   try {
@@ -82,16 +85,29 @@ async function create(data: CreateCompanyData): Promise<Company> {
     await client.query(
       `INSERT INTO user_company (id_user, id_company, role)
        VALUES ($1, $2, $3)`,
-      [data.ownerId, company.id, 'Proprietário']
+      [data.ownerId, company.id, data.role]
     );
 
     await client.query('COMMIT');
-    return company;
+    return {
+      company,
+      association: {
+        userId: data.ownerId,
+        companyId: company.id,
+        role: data.role,
+        createdAt: new Date(),
+      },
+    };
   } catch (err) {
     await client.query('ROLLBACK');
     if (isPgError(err) && err.code === PG_UNIQUE_VIOLATION) {
-      throw new ConflictError(`Já existe uma empresa registada com o NIF "${data.nif}".`);
+      throw new ConflictError(
+        `Já existe uma empresa registada com o NIF "${data.nif}".`,
+        undefined,
+        'COMPANY_NIF_ALREADY_EXISTS'
+      );
     }
+
     // Qualquer outro erro sobe sem tratamento especial — vira 500
     // genérico no errorHandler global, comportamento correto para
     // falhas que não sabemos explicar ao cliente.
@@ -99,6 +115,15 @@ async function create(data: CreateCompanyData): Promise<Company> {
   } finally {
     client.release();
   }
+}
+
+async function findByNif(nif: string): Promise<Company | null> {
+  const result = await query<CompanyRow>(
+    `SELECT id, id_owner, name, nif, sector, status, created_at, updated_at
+     FROM company WHERE nif = $1`,
+    [nif]
+  );
+  return result.rows[0] ? toCompany(result.rows[0]) : null;
 }
 
 /**
@@ -288,6 +313,46 @@ async function findAllWithUsers(): Promise<CompanyWithUsers[]> {
 }
 
 /**
+ * Lista as empresas de que o utilizador é proprietário ou membro.
+ * A condição EXISTS evita multiplicar empresas quando o proprietário
+ * também tem uma associação em user_company. As associações devolvidas
+ * continuam a ser exclusivamente as existentes em user_company.
+ */
+async function findMineWithUsers(userId: string): Promise<CompanyWithUsers[]> {
+  const result = await query<CompanyWithUsersRow>(
+    `SELECT
+         c.id, c.id_owner, c.name, c.nif, c.sector, c.status, c.created_at, c.updated_at,
+       COALESCE(
+         json_agg(
+           json_build_object(
+             'id', u.id,
+             'fullName', u.full_name,
+             'email', u.email,
+             'companyRole', uc.role
+           )
+           ORDER BY u.full_name
+         ) FILTER (WHERE u.id IS NOT NULL),
+         '[]'
+       ) AS users
+     FROM company c
+     LEFT JOIN user_company uc ON uc.id_company = c.id
+     LEFT JOIN users u ON u.id = uc.id_user
+     WHERE c.id_owner = $1
+        OR EXISTS (
+          SELECT 1
+          FROM user_company membership
+          WHERE membership.id_company = c.id
+            AND membership.id_user = $1
+        )
+     GROUP BY c.id
+     ORDER BY c.name ASC`,
+    [userId]
+  );
+
+  return result.rows.map(toCompanyWithUsers);
+}
+
+/**
  * Exportado como objeto (não como funções soltas) para que, no
  * service, a origem de cada chamada fique explícita na leitura do
  * código: `companyRepository.findById(...)` — mesmo princípio já
@@ -297,7 +362,9 @@ export const companyRepository = {
   create,
   findAll,
   findById,
+  findByNif,
   update,
   deactivate,
   findAllWithUsers,
+  findMineWithUsers,
 };

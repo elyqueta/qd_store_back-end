@@ -10,10 +10,14 @@ const nameSchema = z
 const nifSchema = z
   .string({ error: 'nif é obrigatório e deve ser texto.' })
   .trim()
-  .min(1, 'nif não pode ser vazio.')
-  .max(20, 'nif deve ter no máximo 20 caracteres.');
+  .regex(/^[0-9]{9}$/, 'nif deve conter exactamente 9 dígitos.');
 
 const sectorSchema = z.string().trim().max(100, 'sector deve ter no máximo 100 caracteres.');
+const roleSchema = z
+  .string({ error: 'role é obrigatório e deve ser texto.' })
+  .trim()
+  .min(1, 'role é obrigatório.')
+  .max(100, 'role deve ter no máximo 100 caracteres.');
 
 /**
  * .strict() aqui garante que um campo inesperado no CORPO da
@@ -25,6 +29,7 @@ export const createCompanySchema = z
     name: nameSchema,
     nif: nifSchema,
     sector: sectorSchema.optional(),
+    role: roleSchema,
   })
   .strict();
 
@@ -54,6 +59,10 @@ export const companyIdParamSchema = z.object({
   id: z.uuid('id deve ser um UUID válido.'),
 });
 
+export const companyMineQuerySchema = z.object({}).strict();
+export const resolveCompanyQuerySchema = z.object({ nif: nifSchema }).strict();
+
 export type CreateCompanyInput = z.infer<typeof createCompanySchema>;
 export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
 export type CompanyIdParam = z.infer<typeof companyIdParamSchema>;
+export type ResolveCompanyQuery = z.infer<typeof resolveCompanyQuerySchema>;

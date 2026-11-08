@@ -3,6 +3,7 @@ import { productSpecificationController } from '../../controllers/productSpecifi
 import { validate } from '../../middlewares/validate';
 import { authenticate } from '../../middlewares/authenticate';
 import { requireAdmin } from '../../middlewares/requireAdmin';
+import { publicReadCache } from '../../middlewares/apiCachePolicy';
 import {
   createProductSpecificationSchema,
   productIdOnlyParamSchema,
@@ -114,6 +115,7 @@ router.post(
  */
 router.get(
   '/',
+  publicReadCache,
   validate({ params: productIdOnlyParamSchema }),
   productSpecificationController.findAll
 );

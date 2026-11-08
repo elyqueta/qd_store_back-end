@@ -26,6 +26,40 @@ const router = Router();
 
 /**
  * @openapi
+ * /api/v1/admin/dashboard-summary:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Obtém contagens agregadas para o dashboard administrativo
+ *     description: products e categories contam todos os registos; activeDeliveryTypes conta apenas tipos activos; companies conta todas as empresas, incluindo inactivas, tal como GET /admin/companies.
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Métricas agregadas sem dados pessoais nem listas de entidades.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: success }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     products: { type: integer, example: 42 }
+ *                     categories: { type: integer, example: 8 }
+ *                     activeDeliveryTypes: { type: integer, example: 3 }
+ *                     companies: { type: integer, example: 12 }
+ *       401: { description: Não autenticado. }
+ *       403: { description: Apenas administradores. }
+ */
+router.get(
+  '/dashboard-summary',
+  authenticate,
+  requireRole('admin'),
+  adminController.getDashboardSummary
+);
+
+/**
+ * @openapi
  * /api/v1/admin/companies:
  *   get:
  *     tags: [Admin]

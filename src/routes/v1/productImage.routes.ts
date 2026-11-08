@@ -3,6 +3,8 @@ import { productImageController } from '../../controllers/productImage.controlle
 import { validate } from '../../middlewares/validate';
 import { authenticate } from '../../middlewares/authenticate';
 import { requireAdmin } from '../../middlewares/requireAdmin';
+import { publicReadCache } from '../../middlewares/apiCachePolicy';
+import { uploadProductImage } from '../../middlewares/productImageUpload';
 import {
   createProductImageSchema,
   productIdOnlyParamSchema,
@@ -36,9 +38,13 @@ const router = Router({ mergeParams: true });
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/CreateProductImageInput'
+ *             type: object
+ *             required: [image]
+ *             properties:
+ *               image: { type: string, format: binary }
+ *               displayOrder: { type: integer, minimum: 0 }
  *     responses:
  *       201:
  *         description: Imagem criada com sucesso.
@@ -78,6 +84,7 @@ router.post(
   '/',
   authenticate,
   requireAdmin,
+  uploadProductImage,
   validate({ params: productIdOnlyParamSchema, body: createProductImageSchema }),
   productImageController.create
 );
@@ -113,7 +120,12 @@ router.post(
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/', validate({ params: productIdOnlyParamSchema }), productImageController.findAll);
+router.get(
+  '/',
+  publicReadCache,
+  validate({ params: productIdOnlyParamSchema }),
+  productImageController.findAll
+);
 
 /**
  * @openapi
@@ -135,9 +147,16 @@ router.get('/', validate({ params: productIdOnlyParamSchema }), productImageCont
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/UpdateProductImageInput'
+ *             type: object
+ *             properties:
+ *               image: { type: string, format: binary }
+ *               displayOrder: { type: integer, minimum: 0 }
+ *               width: { type: integer, nullable: true }
+ *               height: { type: integer, nullable: true }
+ *               format: { type: string, nullable: true }
+ *               sizeBytes: { type: integer, nullable: true }
  *     responses:
  *       200:
  *         description: Imagem atualizada.
@@ -177,6 +196,7 @@ router.patch(
   '/:id',
   authenticate,
   requireAdmin,
+  uploadProductImage,
   validate({ params: productImageParamSchema, body: updateProductImageSchema }),
   productImageController.update
 );

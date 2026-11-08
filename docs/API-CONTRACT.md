@@ -13,23 +13,58 @@ Este contrato acompanha as rotas e os validators existentes. Os endpoints de dom
 - Sucesso: `{ "status": "success", "data": ..., "count?": ..., "pagination?": ... }`
 - Erro: `{ "status": "error", "message": "...", "details?": ... }`
 - Remoções com sucesso devolvem `204 No Content`.
+- As respostas mantêm o envelope `status`/`data`; listas podem acrescentar `count` ou
+  `pagination`, conforme o endpoint. Não há mudança para um novo envelope genérico.
 
-| HTTP | Significado |
-|---|---|
-| 200 | Pedido concluído; inclui leituras e alterações com resposta. |
-| 201 | Recurso criado. |
-| 204 | Operação concluída sem corpo (remoção/logout). |
-| 400 | Pedido válido em JSON, mas sem sentido no estado actual, por exemplo carrinho vazio. |
-| 401 | Token ausente, inválido ou expirado; ou credenciais inválidas. |
-| 403 | Utilizador autenticado sem permissão. |
-| 404 | Recurso inexistente ou que pertence a outro utilizador. |
-| 409 | Conflito com o estado actual do recurso. |
-| 422 | Body, parâmetro ou query inválidos. |
-| 429 | Limite de pedidos excedido. |
-| 500 | Erro inesperado do servidor. |
+| HTTP | Significado                                                                          |
+| ---- | ------------------------------------------------------------------------------------ |
+| 200  | Pedido concluído; inclui leituras e alterações com resposta.                         |
+| 201  | Recurso criado.                                                                      |
+| 204  | Operação concluída sem corpo (remoção/logout).                                       |
+| 400  | Pedido válido em JSON, mas sem sentido no estado actual, por exemplo carrinho vazio. |
+| 401  | Token ausente, inválido ou expirado; ou credenciais inválidas.                       |
+| 403  | Utilizador autenticado sem permissão.                                                |
+| 404  | Recurso inexistente ou que pertence a outro utilizador.                              |
+| 409  | Conflito com o estado actual do recurso.                                             |
+| 422  | Body, parâmetro ou query inválidos.                                                  |
+| 429  | Limite de pedidos excedido.                                                          |
+| 500  | Erro inesperado do servidor.                                                         |
 
 Bodies são validados com schemas estritos quando aplicável; campos desconhecidos são rejeitados.
 Preços e totais são sempre calculados no servidor.
+
+## 1.1. Operações idempotentes e canceláveis no front-end
+
+Os fluxos de criação de empresa e criação de encomenda aceitam o header `Idempotency-Key` como proteção contra reenvios repetidos do mesmo pedido. A mesma chave, aplicada ao mesmo utilizador e ao mesmo tipo de operação, devolve o resultado já persistido em vez de criar um registo duplicado.
+
+- `Idempotency-Key: <uuid>` no `POST /api/v1/companies` e no `POST /api/v1/orders`;
+- quando a mesma chave é repetida com o mesmo payload, a API responde com `200`/`201` e devolve o recurso já criado;
+- quando a mesma chave foi usada com payload diferente, responde `409` com código estável `COMPANY_CREATION_ALREADY_EXISTS` ou `ORDER_CREATION_ALREADY_PROCESSED`;
+- quando a operação ainda está em curso, devolve `409` com `COMPANY_OPERATION_IN_PROGRESS` ou `ORDER_CREATION_ALREADY_PROCESSED`;
+- uma operação que falhe antes de concluir pode ser repetida com a mesma chave e o mesmo payload; a chave não cria um segundo recurso;
+- o cancelamento do front-end não deve impedir que a operação já aceite termine; o cliente deve apenas impedir passos seguintes e reusar a mesma chave em reenvios.
+
+### Criação de encomenda empresarial temporária
+
+`POST /api/v1/orders` aceita o seguinte payload, sem criar uma empresa permanente:
+
+```json
+{
+  "deliveryTypeId": "...",
+  "paymentMethodId": "...",
+  "addressId": "...",
+  "companySnapshot": {
+    "name": "Empresa Exemplo",
+    "nif": "123456789",
+    "role": "Administrador"
+  }
+}
+```
+
+O `companySnapshot` é guardado como snapshot da encomenda. `companyId` e
+`companySnapshot` não podem ser enviados juntos. Quando `companyId` é usado, a
+empresa tem de estar associada ao utilizador autenticado; essa autorização é
+validada no backend.
 
 ## 2. Autenticação
 
@@ -45,6 +80,29 @@ Preços e totais são sempre calculados no servidor.
 O access token dura o valor de `JWT_ACCESS_EXPIRES_IN` (por defeito `15m`). O refresh token dura
 `JWT_REFRESH_EXPIRES_IN_DAYS` dias (por defeito `7`).
 
+## Cache HTTP e cache no cliente
+
+As leituras públicas definidas nas rotas enviam `Cache-Control` público e o Express gera ETag
+fraco para respostas JSON. `If-None-Match` pode resultar em `304 Not Modified` sem corpo:
+
+- produtos e detalhe/imagens/especificações públicas: `max-age=60, s-maxage=60, must-revalidate`;
+- categorias, localizações, tipos de entrega e métodos de pagamento: `max-age=300, s-maxage=300, must-revalidate`.
+
+Alterações administrativas não purgam caches de CDN automaticamente; proxies devem respeitar o
+TTL indicado. A atualização será observada após, no máximo, 60 segundos para catálogo e 300
+segundos para dados de referência (ou antes quando o ETag revalidar). Não há CDN/Redis configurado
+pela API e não se promete purge remoto.
+
+Todas as rotas `/api/v1` recebem `Cache-Control: private, no-store` por padrão. O middleware de
+leitura pública substitui essa diretiva apenas nas rotas públicas GET explicitamente marcadas.
+Carrinho, endereços, conta, empresas protegidas, encomendas, pagamentos, wishlist, notificações
+e administração não usam cache pública. O cliente Angular pode manter cache em memória por
+sessão, indexado pela URL completa (incluindo filtros), com TTL próprio e invalidação após
+mutations ou refresh explícito; esse cache não substitui autenticação nem deve partilhar dados
+entre utilizadores.
+
+Não há `Vary: Accept-Language`: a API não localiza respostas por esse header actualmente.
+
 ## 3. Endpoints por domínio
 
 `Público` não requer token. `Utilizador` requer access token. `Admin` requer access token com papel
@@ -52,118 +110,146 @@ O access token dura o valor de `JWT_ACCESS_EXPIRES_IN` (por defeito `15m`). O re
 
 ### Auth
 
-| Método e URL | Acesso | Body e resultado |
-|---|---|---|
-| `POST /api/v1/auth/register` | Público | `{ fullName, email, password, phone, accountType: "personal", nif? }` → `201`, `data: User`. |
-| `POST /api/v1/auth/login` | Público | `{ email, password }` → `200`, `data: { user, accessToken, refreshToken }`; também pode responder 401/422/429. |
-| `POST /api/v1/auth/refresh` | Público | `{ refreshToken }` → `200`, novo par de tokens; 401 se inválido/expirado. |
-| `POST /api/v1/auth/logout` | Público | `{ refreshToken }` → `204`. |
+| Método e URL                 | Acesso  | Body e resultado                                                                                               |
+| ---------------------------- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| `POST /api/v1/auth/register` | Público | `{ fullName, email, password, phone, accountType: "personal", nif? }` → `201`, `data: User`.                   |
+| `POST /api/v1/auth/login`    | Público | `{ email, password }` → `200`, `data: { user, accessToken, refreshToken }`; também pode responder 401/422/429. |
+| `POST /api/v1/auth/refresh`  | Público | `{ refreshToken }` → `200`, novo par de tokens; 401 se inválido/expirado.                                      |
+| `POST /api/v1/auth/logout`   | Público | `{ refreshToken }` → `204`.                                                                                    |
 
 ### Categorias
 
-| Método e URL | Acesso | Body e resultado |
-|---|---|---|
-| `GET /api/v1/categories` | Público | `200`, array de categorias e `count`. |
-| `GET /api/v1/categories/:id` | Público | `200`, categoria; 404 se inexistente. |
-| `POST /api/v1/categories` | Admin | `{ label, icon? }` → `201`; 409 se o slug já existir. |
-| `PATCH /api/v1/categories/:id` | Admin | `{ label?, icon? }` → `200`; pelo menos um campo. |
-| `DELETE /api/v1/categories/:id` | Admin | `204`; 409 se ainda tiver produtos associados. |
+| Método e URL                    | Acesso  | Body e resultado                                                                                                                                     |
+| ------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/categories`        | Público | `200`, array estável com `id`, `slug`, `label`, `icon`, `createdAt`, `updatedAt` e `count`. Não há árvore nem contagem de produtos no modelo actual. |
+| `GET /api/v1/categories/:id`    | Público | `200`, categoria; 404 se inexistente.                                                                                                                |
+| `POST /api/v1/categories`       | Admin   | `{ label, icon? }` → `201`; 409 se o slug já existir.                                                                                                |
+| `PATCH /api/v1/categories/:id`  | Admin   | `{ label?, icon? }` → `200`; pelo menos um campo.                                                                                                    |
+| `DELETE /api/v1/categories/:id` | Admin   | `204`; 409 se ainda tiver produtos associados.                                                                                                       |
 
 ### Produtos, imagens e especificações
 
-| Método e URL | Acesso | Body, parâmetros ou resultado |
-|---|quero que agora todos os produtos retornem com pelo menos a imagem principal e mandes o novo bod req para eu mandar o front adaptar sem destruir o que já funciona---|---|
-| `GET /api/v1/products?page=1&limit=20&categoryId=&status=` | Público | `200`, produtos e `pagination`; cada produto inclui `mainImage` (imagem com menor `displayOrder`) ou `null` quando ainda não tem imagem. |
-| `GET /api/v1/products/:id` | Público | `200`, produto com `mainImage` ou `null`; 404 se inexistente. |
-| `POST /api/v1/products` | Admin | `{ categoryId, name, price, description?, originalPrice?, badge?, mainImage? }` → `201`; `mainImage`, quando enviada, é criada juntamente com o produto e recebe `displayOrder: 0`. |
-| `PATCH /api/v1/products/:id` | Admin | Campos editáveis do produto, todos opcionais, pelo menos um. |
-| `DELETE /api/v1/products/:id` | Admin | `204`; 409 quando o produto está referenciado. |
-| `GET /api/v1/products/:productId/images` | Público | `200`, imagens ordenadas por `displayOrder`. |
-| `POST /api/v1/products/:productId/images` | Admin | `{ url, displayOrder?, width?, height?, format?, sizeBytes? }` → `201`. |
-| `PATCH /api/v1/products/:productId/images/:id` | Admin | Campos da imagem a alterar → `200`. |
-| `DELETE /api/v1/products/:productId/images/:id` | Admin | `204`. |
-| `GET /api/v1/products/:productId/specifications` | Público | `200`, especificações chave/valor. |
-| `POST /api/v1/products/:productId/specifications` | Admin | `{ specKey, specValue, displayOrder }` → `201`. |
-| `PATCH /api/v1/products/:productId/specifications/:id` | Admin | `{ specKey?, specValue?, displayOrder? }` → `200`. |
-| `DELETE /api/v1/products/:productId/specifications/:id` | Admin | `204`. |
+| Método e URL                                                                                                | Acesso  | Body, parâmetros ou resultado                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/products?page=1&limit=20&categoryId=&status=&search=&sort=&priceMin=&priceMax=&availableOnly=` | Público | `200`, produtos e `pagination`; cada produto inclui `mainImage` (imagem com menor `displayOrder`) ou `null` quando ainda não tem imagem. `search` procura em nome/descrição; `sort` aceita `createdAt_desc` (padrão), `createdAt_asc`, `name_asc`, `name_desc`, `price_asc` ou `price_desc`; `availableOnly=true` significa status `active`, não stock quantitativo. `priceMin`/`priceMax` filtram preço actual. |
+| `GET /api/v1/products/:id`                                                                                  | Público | `200`, produto com `mainImage` ou `null`; 404 se inexistente.                                                                                                                                                                                                                                                                                                                                                    |
+| `POST /api/v1/products`                                                                                     | Admin   | JSON `{ categoryId, name, price, description?, originalPrice?, badge? }` ou multipart com os mesmos campos e `image?` → `201`; o ficheiro enviado é carregado no Cloudinary e associado ao produto.                                                                                                                                                                                                              |
+| `PATCH /api/v1/products/:id`                                                                                | Admin   | Campos editáveis do produto, todos opcionais, pelo menos um.                                                                                                                                                                                                                                                                                                                                                     |
+| `DELETE /api/v1/products/:id`                                                                               | Admin   | `204`; 409 quando o produto está referenciado.                                                                                                                                                                                                                                                                                                                                                                   |
+| `GET /api/v1/products/:productId/images`                                                                    | Público | `200`, imagens ordenadas por `displayOrder`.                                                                                                                                                                                                                                                                                                                                                                     |
+| `POST /api/v1/products/:productId/images`                                                                   | Admin   | `multipart/form-data` com `image` obrigatório (JPEG, PNG, WebP ou AVIF; máximo 8 MB) e `displayOrder?` → `201`; a URL é gerada pelo Cloudinary e guardada pela API.                                                                                                                                                                                                                                              |
+| `PATCH /api/v1/products/:productId/images/:id`                                                              | Admin   | `multipart/form-data` com `image` para substituir a imagem ou JSON/multipart apenas com metadados; URLs fornecidas pelo cliente não são aceites → `200`.                                                                                                                                                                                                                                                         |
+| `DELETE /api/v1/products/:productId/images/:id`                                                             | Admin   | `204`; assets geridos pelo Cloudinary são removidos, com tentativas automáticas em caso de indisponibilidade temporária.                                                                                                                                                                                                                                                                                         |
+| `GET /api/v1/products/:productId/specifications`                                                            | Público | `200`, especificações chave/valor.                                                                                                                                                                                                                                                                                                                                                                               |
+| `POST /api/v1/products/:productId/specifications`                                                           | Admin   | `{ specKey, specValue, displayOrder }` → `201`.                                                                                                                                                                                                                                                                                                                                                                  |
+| `PATCH /api/v1/products/:productId/specifications/:id`                                                      | Admin   | `{ specKey?, specValue?, displayOrder? }` → `200`.                                                                                                                                                                                                                                                                                                                                                               |
+| `DELETE /api/v1/products/:productId/specifications/:id`                                                     | Admin   | `204`.                                                                                                                                                                                                                                                                                                                                                                                                           |
 
-Exemplo compatível com o `POST /api/v1/products` actual; `mainImage` é opcional para não
-invalidar integrações existentes:
+Para criar produto com imagem, envie os campos e o ficheiro `image` juntos como
+`multipart/form-data`. O cliente não envia URL nem metadados de armazenamento da imagem:
+Cloudinary devolve esses dados e a API grava-os no banco.
 
-```json
-{
-  "categoryId": "c1b2a3d4-e5f6-4789-a012-3456789abcde",
-  "name": "Portátil Dell Inspiron 15",
-  "price": 450000,
-  "description": "Portátil para trabalho e estudo",
-  "originalPrice": 520000,
-  "badge": "Promoção",
-  "mainImage": {
-    "url": "https://cdn.exemplo.co.ao/produtos/dell-inspiron-15.jpg",
-    "width": 1200,
-    "height": 900,
-    "format": "jpg",
-    "sizeBytes": 204800
-  }
-}
+```ts
+const form = new FormData();
+form.append('categoryId', categoryId);
+form.append('name', 'Portátil Dell Inspiron 15');
+form.append('price', '450000');
+form.append('image', selectedFile);
+
+await api.post('/api/v1/products', form);
 ```
 
 O campo `mainImage` na resposta contém o objecto da imagem principal (`id`, `productId`,
 `url`, `displayOrder` e metadados). Produtos criados antes desta alteração, ou criados sem
-`mainImage`, devolvem `mainImage: null` até existir uma imagem associada. Continua disponível
-o fluxo anterior de criação de produto seguido de `POST /api/v1/products/:productId/images`.
+imagem devolvem `mainImage: null` até existir uma imagem associada. Também é possível criar
+o produto sem imagem e enviá-la depois pelo `POST /api/v1/products/:productId/images`.
+O campo continua presente como `null` quando não há imagem; não é omitido. O modelo actual
+não tem campos de imagem `alt`/`isPrimary`, produto `slug`/`stock`/marca/empresa, nem categoria
+hierárquica. Não são inventados valores para esses campos. A disponibilidade actual é expressa
+por `status` (`active`, `inactive`, `out_of_stock`), sem quantidade de stock.
+
+Uploads e substituições de imagem utilizam os mesmos endpoints existentes, com o ficheiro no
+campo multipart `image`; o backend guarda URL e metadados retornados pelo Cloudinary. O campo
+`cloudinaryPublicId` é interno e não altera o objeto de imagem enviado ao cliente. Ao substituir
+ou remover imagens e ao remover produtos, os identificadores dos assets são guardados numa fila
+persistente e a API tenta removê-los do Cloudinary; falhas são registadas e tentadas novamente.
+Imagens existentes com URL Cloudinary padrão são reconhecidas quando possível; URLs de outros
+provedores continuam compatíveis e não são apagadas no Cloudinary.
+
+Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` e `CLOUDINARY_API_SECRET` no ambiente
+privado do servidor (as três variáveis são necessárias para uploads). Não envie essas credenciais
+ao front-end.
+
+A paginação mantém as chaves antigas `page`, `limit`, `total`, `totalPages` e acrescenta os
+aliases `currentPage`, `totalItems`, `hasNextPage`. O limite máximo é 100 e a ordenação tem
+desempate estável por id. As queries continuam estritas: parâmetros desconhecidos são rejeitados.
+
+Exemplo de filtros:
+
+```http
+GET /api/v1/products?categoryId=<uuid>&search=dell&page=1&limit=20&sort=price_asc&priceMin=100000&priceMax=700000&availableOnly=true
+```
 
 ### Localizações
 
-| Método e URL | Acesso | Resultado |
-|---|---|---|
-| `GET /api/v1/locations` | Público | `200`, 21 províncias com municípios. |
-| `GET /api/v1/locations/provinces` | Público | `200`, províncias. |
+| Método e URL                                               | Acesso  | Resultado                                                  |
+| ---------------------------------------------------------- | ------- | ---------------------------------------------------------- |
+| `GET /api/v1/locations`                                    | Público | `200`, 21 províncias com municípios.                       |
+| `GET /api/v1/locations/provinces`                          | Público | `200`, províncias.                                         |
 | `GET /api/v1/locations/provinces/:province/municipalities` | Público | `200`, municípios do slug; 404 se a província não existir. |
+
+`GET /api/v1/locations` devolve as 21 províncias e respectivos municípios numa chamada,
+ordenados alfabeticamente, com `slug` e `name`. Estes dados são estáticos no backend; o modelo
+não define IDs ou códigos numéricos. O front deve usar o slug/nome devolvidos, sem inventar IDs.
 
 ### Endereços
 
 Todas as rotas exigem utilizador autenticado e operam apenas sobre endereços próprios.
+Província e município são validados em conjunto contra o dataset de Angola. O primeiro endereço
+de um utilizador torna-se padrão automaticamente; a lista devolve o padrão primeiro.
 
-| Método e URL | Body e resultado |
-|---|---|
-| `GET /api/v1/addresses` | `200`, lista; o endereço padrão vem primeiro. |
-| `GET /api/v1/addresses/:id` | `200`; 404 para endereço inexistente ou de outra pessoa. |
-| `POST /api/v1/addresses` | `{ province, municipality, neighborhood, address, label?, reference?, latitude?, longitude? }` → `201`. |
-| `PATCH /api/v1/addresses/:id` | Campos de endereço opcionais; `province` e `municipality` têm de ser enviados juntos. |
-| `PATCH /api/v1/addresses/:id/default` | Sem body; define o endereço padrão. |
-| `DELETE /api/v1/addresses/:id` | `204`. |
+| Método e URL                          | Body e resultado                                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/addresses`               | `200`, lista; o endereço padrão vem primeiro.                                                           |
+| `GET /api/v1/addresses/:id`           | `200`; 404 para endereço inexistente ou de outra pessoa.                                                |
+| `POST /api/v1/addresses`              | `{ province, municipality, neighborhood, address, label?, reference?, latitude?, longitude? }` → `201`. |
+| `PATCH /api/v1/addresses/:id`         | Campos de endereço opcionais; `province` e `municipality` têm de ser enviados juntos.                   |
+| `PATCH /api/v1/addresses/:id/default` | Sem body; define o endereço padrão.                                                                     |
+| `DELETE /api/v1/addresses/:id`        | `204`.                                                                                                  |
 
 ### Empresas e utilizadores da empresa
 
-| Método e URL | Acesso | Body e resultado |
-|---|---|---|
-| `POST /api/v1/companies` | Utilizador | `{ name, nif, sector? }` → `201`; o criador é o proprietário. |
-| `GET /api/v1/companies` | Admin | `200`, lista de empresas. |
-| `GET /api/v1/companies/:id` | Proprietário/Admin | `200`; 404 se inexistente. |
-| `PATCH /api/v1/companies/:id` | Proprietário/Admin | `{ name?, sector? }` → `200`. |
-| `DELETE /api/v1/companies/:id` | Proprietário/Admin | `204` (desactivação). |
-| `POST /api/v1/companies/:companyId/users` | Proprietário/Admin | `{ userId, role? }` → `201`; 409 se já associado. |
-| `GET /api/v1/companies/:companyId/users` | Membro da empresa/Admin | `200`, associações da empresa. |
-| `PATCH /api/v1/companies/:companyId/users/:userId` | Proprietário/Admin | `{ role }` → `200`. |
-| `DELETE /api/v1/companies/:companyId/users/:userId` | Proprietário/Admin | `204`. |
+| Método e URL                                        | Acesso                  | Body e resultado                                                                                                                  |
+| --------------------------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/v1/companies`                            | Utilizador              | `{ name, nif, sector? }` → `201`; o criador é o proprietário.                                                                     |
+| `GET /api/v1/companies`                             | Admin                   | `200`, lista administrativa de empresas.                                                                                          |
+| `GET /api/v1/companies/mine`                        | Utilizador autenticado  | `200`, envelope `{ status, data }` com `CompanyWithUsers[]` das empresas próprias ou associadas. Não aceita filtros nem `userId`. |
+| `GET /api/v1/companies/:id`                         | Proprietário/Admin      | `200`; 404 se inexistente.                                                                                                        |
+| `PATCH /api/v1/companies/:id`                       | Proprietário/Admin      | `{ name?, sector? }` → `200`.                                                                                                     |
+| `DELETE /api/v1/companies/:id`                      | Proprietário/Admin      | `204` (desactivação).                                                                                                             |
+| `POST /api/v1/companies/:companyId/users`           | Proprietário/Admin      | `{ userId, role? }` → `201`; 409 se já associado.                                                                                 |
+| `GET /api/v1/companies/:companyId/users`            | Membro da empresa/Admin | `200`, associações da empresa.                                                                                                    |
+| `PATCH /api/v1/companies/:companyId/users/:userId`  | Proprietário/Admin      | `{ role }` → `200`.                                                                                                               |
+| `DELETE /api/v1/companies/:companyId/users/:userId` | Proprietário/Admin      | `204`.                                                                                                                            |
+
+`GET /api/v1/companies/mine` usa exclusivamente o `sub` do token autenticado para determinar o âmbito. `users[]` inclui `id`, `fullName`, `email` e `companyRole` das associações existentes em `user_company`. O proprietário pode consultar a sua empresa mesmo quando a sua própria associação não existe; nesse caso, essa ausência não cria uma entrada artificial em `users[]`. Empresas `inactive` e `banned` são incluídas se o utilizador ainda for proprietário ou membro, e o campo `status` identifica claramente o estado. A rota não mostra empresas não relacionadas, não aceita identificadores fornecidos pelo cliente e não substitui nem alarga a rota administrativa.
 
 ### Tipos de entrega e métodos de pagamento
 
 As leituras são públicas; a gestão de catálogo é administrativa.
 
-| Método e URL | Acesso | Body e resultado |
-|---|---|---|
-| `GET /api/v1/delivery-types` | Público | `200`, tipos activos e `count`. |
-| `GET /api/v1/delivery-types/:id` | Público | `200`; 404 se inexistente/inactivo. |
-| `POST /api/v1/delivery-types` | Admin | `{ name, price, type, description? }` → `201`. |
-| `PATCH /api/v1/delivery-types/:id` | Admin | Campos de entrega editáveis → `200`. |
-| `DELETE /api/v1/delivery-types/:id` | Admin | `204` (desactivação). |
-| `GET /api/v1/payment-methods` | Público | `200`, métodos activos e `count`. |
-| `GET /api/v1/payment-methods/:id` | Público | `200`; 404 se inexistente/inactivo. |
-| `POST /api/v1/payment-methods` | Admin | `{ name, type }` → `201`. |
-| `PATCH /api/v1/payment-methods/:id` | Admin | `{ name?, type? }` → `200`. |
-| `DELETE /api/v1/payment-methods/:id` | Admin | `204` (desactivação). |
+| Método e URL                         | Acesso  | Body e resultado                               |
+| ------------------------------------ | ------- | ---------------------------------------------- |
+| `GET /api/v1/delivery-types`         | Público | `200`, tipos activos e `count`.                |
+| `GET /api/v1/delivery-types/:id`     | Público | `200`; 404 se inexistente/inactivo.            |
+| `POST /api/v1/delivery-types`        | Admin   | `{ name, price, type, description? }` → `201`. |
+| `PATCH /api/v1/delivery-types/:id`   | Admin   | Campos de entrega editáveis → `200`.           |
+| `DELETE /api/v1/delivery-types/:id`  | Admin   | `204` (desactivação).                          |
+| `GET /api/v1/payment-methods`        | Público | `200`, métodos activos e `count`.              |
+| `GET /api/v1/payment-methods/:id`    | Público | `200`; 404 se inexistente/inactivo.            |
+| `POST /api/v1/payment-methods`       | Admin   | `{ name, type }` → `201`.                      |
+| `PATCH /api/v1/payment-methods/:id`  | Admin   | `{ name?, type? }` → `200`.                    |
+| `DELETE /api/v1/payment-methods/:id` | Admin   | `204` (desactivação).                          |
 
 Os valores de `PaymentMethod.type` são `multicaixa_express`, `multicaixa_reference` e
 `bank_transfer`. Não há CRUD de configuração bancária por empresa nesta versão.
@@ -172,28 +258,28 @@ Os valores de `PaymentMethod.type` são `multicaixa_express`, `multicaixa_refere
 
 Todas as rotas exigem utilizador autenticado; a identidade vem do token.
 
-| Método e URL | Body e resultado |
-|---|---|
-| `GET /api/v1/cart` | `200`, cria carrinho vazio de forma preguiçosa quando necessário. |
-| `POST /api/v1/cart/items` | `{ productId, quantity? }` (1–99, omissão = 1) → `201`; soma se já existir. |
-| `PATCH /api/v1/cart/items/:itemId` | `{ quantity }` (1–99) → `200`, carrinho actualizado. |
-| `DELETE /api/v1/cart/items/:itemId` | `204`; 404 se o item não pertencer ao carrinho. |
-| `DELETE /api/v1/cart` | `204`, esvazia. |
+| Método e URL                        | Body e resultado                                                            |
+| ----------------------------------- | --------------------------------------------------------------------------- |
+| `GET /api/v1/cart`                  | `200`, cria carrinho vazio de forma preguiçosa quando necessário.           |
+| `POST /api/v1/cart/items`           | `{ productId, quantity? }` (1–99, omissão = 1) → `201`; soma se já existir. |
+| `PATCH /api/v1/cart/items/:itemId`  | `{ quantity }` (1–99) → `200`, carrinho actualizado.                        |
+| `DELETE /api/v1/cart/items/:itemId` | `204`; 404 se o item não pertencer ao carrinho.                             |
+| `DELETE /api/v1/cart`               | `204`, esvazia.                                                             |
 
 `CartItem` inclui preço actual, subtotal, primeira imagem e estado do produto. Totalizações usam
 cêntimos inteiros no servidor.
 
 ### Encomendas
 
-| Método e URL | Acesso | Body e resultado |
-|---|---|---|
-| `POST /api/v1/orders` | Utilizador | `{ deliveryTypeId, paymentMethodId, addressId, companyId?, notes? }` → `201`. |
-| `GET /api/v1/orders?page=1&limit=20&status=` | Utilizador | `200`, apenas as suas encomendas e `pagination`. |
-| `GET /api/v1/orders/:id` | Dono | `200`; 404 para encomenda alheia. Inclui snapshot, histórico e resumo do pagamento mais recente. |
-| `POST /api/v1/orders/:id/cancel` | Dono | `200`; só cancela encomenda em processamento sem pagamento confirmado. |
-| `GET /api/v1/admin/orders` | Admin | `200`, paginação, filtros opcionais `status` e `userId`. |
-| `GET /api/v1/admin/orders/:id` | Admin | `200`, encomenda completa. |
-| `PATCH /api/v1/admin/orders/:id/status` | Admin | `{ status: "in_transit" \| "delivered" \| "cancelled", note? }` → `200`. |
+| Método e URL                                 | Acesso     | Body e resultado                                                                                 |
+| -------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
+| `POST /api/v1/orders`                        | Utilizador | `{ deliveryTypeId, paymentMethodId, addressId, companyId?, notes? }` → `201`.                    |
+| `GET /api/v1/orders?page=1&limit=20&status=` | Utilizador | `200`, apenas as suas encomendas e `pagination`.                                                 |
+| `GET /api/v1/orders/:id`                     | Dono       | `200`; 404 para encomenda alheia. Inclui snapshot, histórico e resumo do pagamento mais recente. |
+| `POST /api/v1/orders/:id/cancel`             | Dono       | `200`; só cancela encomenda em processamento sem pagamento confirmado.                           |
+| `GET /api/v1/admin/orders`                   | Admin      | `200`, paginação, filtros opcionais `status` e `userId`.                                         |
+| `GET /api/v1/admin/orders/:id`               | Admin      | `200`, encomenda completa.                                                                       |
+| `PATCH /api/v1/admin/orders/:id/status`      | Admin      | `{ status: "in_transit" \| "delivered" \| "cancelled", note? }` → `200`.                         |
 
 O checkout valida endereço, entrega, método e associação empresarial, lê os preços actuais e grava
 encomenda, snapshot, itens, histórico e limpeza do carrinho numa única transacção. `total` e `status`
@@ -201,13 +287,13 @@ não são aceites no body.
 
 ### Pagamentos
 
-| Método e URL | Acesso | Body e resultado |
-|---|---|---|
-| `POST /api/v1/orders/:orderId/payments` | Dono | `methodType` discriminado; Express também exige `customerPhone`. → `201`, pagamento criado, mesmo se Express simulado falhar. |
-| `GET /api/v1/orders/:orderId/payments` | Dono | `200`, tentativas da mais recente para a mais antiga. |
-| `GET /api/v1/admin/orders/:orderId/payments` | Admin | `200`, histórico de pagamentos. |
-| `POST /api/v1/admin/payments/:paymentId/confirm` | Admin | `{ notes? }` ou body omitido → `200`; confirma transferência ou simula webhook de referência. |
-| `POST /api/v1/admin/payments/:paymentId/reject` | Admin | `{ notes? }` ou body omitido → `200`; rejeita pagamento pendente. |
+| Método e URL                                     | Acesso | Body e resultado                                                                                                              |
+| ------------------------------------------------ | ------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/v1/orders/:orderId/payments`          | Dono   | `methodType` discriminado; Express também exige `customerPhone`. → `201`, pagamento criado, mesmo se Express simulado falhar. |
+| `GET /api/v1/orders/:orderId/payments`           | Dono   | `200`, tentativas da mais recente para a mais antiga.                                                                         |
+| `GET /api/v1/admin/orders/:orderId/payments`     | Admin  | `200`, histórico de pagamentos.                                                                                               |
+| `POST /api/v1/admin/payments/:paymentId/confirm` | Admin  | `{ notes? }` ou body omitido → `200`; confirma transferência ou simula webhook de referência.                                 |
+| `POST /api/v1/admin/payments/:paymentId/reject`  | Admin  | `{ notes? }` ou body omitido → `200`; rejeita pagamento pendente.                                                             |
 
 Exemplos dos bodies:
 
@@ -224,26 +310,26 @@ nova tentativa. O gateway é invocado antes da transacção da base de dados.
 
 Todas as rotas exigem utilizador autenticado e isolam dados por utilizador.
 
-| Método e URL | Body e resultado |
-|---|---|
-| `GET /api/v1/wishlist` | `200`, produtos guardados, mais recentes primeiro. |
-| `POST /api/v1/wishlist` | `{ productId }` → `201` se novo, `200` se já existia. |
-| `DELETE /api/v1/wishlist/:productId` | `204`, mesmo que não estivesse guardado. |
-| `GET /api/v1/notifications?page=1&limit=20&unreadOnly=false` | `200`, lista paginada. |
-| `GET /api/v1/notifications/unread-count` | `200`, `{ data: { count } }`. |
-| `PATCH /api/v1/notifications/:id/read` | `200`; 404 para notificação alheia/inexistente. |
-| `PATCH /api/v1/notifications/read-all` | `200`, `{ data: { updated } }`. |
+| Método e URL                                                 | Body e resultado                                      |
+| ------------------------------------------------------------ | ----------------------------------------------------- |
+| `GET /api/v1/wishlist`                                       | `200`, produtos guardados, mais recentes primeiro.    |
+| `POST /api/v1/wishlist`                                      | `{ productId }` → `201` se novo, `200` se já existia. |
+| `DELETE /api/v1/wishlist/:productId`                         | `204`, mesmo que não estivesse guardado.              |
+| `GET /api/v1/notifications?page=1&limit=20&unreadOnly=false` | `200`, lista paginada.                                |
+| `GET /api/v1/notifications/unread-count`                     | `200`, `{ data: { count } }`.                         |
+| `PATCH /api/v1/notifications/:id/read`                       | `200`; 404 para notificação alheia/inexistente.       |
+| `PATCH /api/v1/notifications/read-all`                       | `200`, `{ data: { updated } }`.                       |
 
 `unreadOnly` aceita literalmente `true` ou `false`.
 
 ### Admin e infraestrutura
 
-| Método e URL | Acesso | Resultado |
-|---|---|---|
-| `GET /api/v1/admin/companies` | Admin | `200`, empresas com utilizadores. |
-| `GET /health` | Público | `200` com `database: "connected"` ou `503` quando a base de dados falha. |
-| `GET /api-docs` | Fora de produção | Interface Scalar. |
-| `GET /openapi.json` | Fora de produção | OpenAPI gerado das rotas. |
+| Método e URL                  | Acesso           | Resultado                                                                |
+| ----------------------------- | ---------------- | ------------------------------------------------------------------------ |
+| `GET /api/v1/admin/companies` | Admin            | `200`, empresas com utilizadores.                                        |
+| `GET /health`                 | Público          | `200` com `database: "connected"` ou `503` quando a base de dados falha. |
+| `GET /api-docs`               | Fora de produção | Interface Scalar.                                                        |
+| `GET /openapi.json`           | Fora de produção | OpenAPI gerado das rotas.                                                |
 
 ## 4. Checkout passo a passo
 
@@ -309,27 +395,27 @@ configurados). Os exemplos assumem um access token válido.
 
 ## 6. Variáveis de ambiente
 
-| Variável | Descrição | Valor por defeito |
-|---|---|---|
-| `NODE_ENV` | Ambiente; a documentação Scalar não é servida em produção. | `development` |
-| `PORT` | Porta HTTP da aplicação. | `3000` |
-| `DATABASE_URL` | URL PostgreSQL obrigatória. | — |
-| `CORS_ORIGIN` | Origens autorizadas, obrigatória. | — |
-| `CORS_ALLOW_LOCALHOST` | Permite qualquer porta em origens de loopback, apenas em `development`. | `false` |
-| `TRUST_PROXY` | Saltos de proxy confiáveis; `0` local, `1` para um proxy na cloud. | `0` |
-| `RATE_LIMIT_WINDOW_MS` | Janela do limitador global da API em milissegundos. | `900000` |
-| `RATE_LIMIT_MAX` | Pedidos por janela e IP. | `100` |
-| `JWT_SECRET` | Segredo de assinatura JWT, mínimo 32 caracteres. | — |
-| `JWT_ACCESS_EXPIRES_IN` | Duração do access token (formato `jsonwebtoken`). | `15m` |
-| `JWT_REFRESH_EXPIRES_IN_DAYS` | Duração do refresh token em dias. | `7` |
-| `BCRYPT_SALT_ROUNDS` | Custo do hash da palavra-passe (10–15). | `12` |
-| `PAYMENT_GATEWAY` | Gateway activo; actualmente apenas `mock`. | `mock` |
-| `PAYMENT_MOCK_FAIL_PHONE` | Telefone que simula recusa Express. | `900000000` |
-| `PAYMENT_REFERENCE_TTL_HOURS` | Validade da referência em horas. | `72` |
-| `PAYMENT_MULTICAIXA_ENTITY` | Entidade de referência fictícia. | `00000` |
-| `BANK_TRANSFER_IBAN` | IBAN fictício para a simulação. | `AO06000000000000000000000` |
-| `BANK_TRANSFER_BANK` | Banco fictício para a simulação. | `Banco Exemplo` |
-| `BANK_TRANSFER_HOLDER` | Titular fictício para a simulação. | `QD Solutions (DADOS FICTÍCIOS)` |
+| Variável                      | Descrição                                                               | Valor por defeito                |
+| ----------------------------- | ----------------------------------------------------------------------- | -------------------------------- |
+| `NODE_ENV`                    | Ambiente; a documentação Scalar não é servida em produção.              | `development`                    |
+| `PORT`                        | Porta HTTP da aplicação.                                                | `3000`                           |
+| `DATABASE_URL`                | URL PostgreSQL obrigatória.                                             | —                                |
+| `CORS_ORIGIN`                 | Origens autorizadas, obrigatória.                                       | —                                |
+| `CORS_ALLOW_LOCALHOST`        | Permite qualquer porta em origens de loopback, apenas em `development`. | `false`                          |
+| `TRUST_PROXY`                 | Saltos de proxy confiáveis; `0` local, `1` para um proxy na cloud.      | `0`                              |
+| `RATE_LIMIT_WINDOW_MS`        | Janela do limitador global da API em milissegundos.                     | `900000`                         |
+| `RATE_LIMIT_MAX`              | Pedidos por janela e IP.                                                | `100`                            |
+| `JWT_SECRET`                  | Segredo de assinatura JWT, mínimo 32 caracteres.                        | —                                |
+| `JWT_ACCESS_EXPIRES_IN`       | Duração do access token (formato `jsonwebtoken`).                       | `15m`                            |
+| `JWT_REFRESH_EXPIRES_IN_DAYS` | Duração do refresh token em dias.                                       | `7`                              |
+| `BCRYPT_SALT_ROUNDS`          | Custo do hash da palavra-passe (10–15).                                 | `12`                             |
+| `PAYMENT_GATEWAY`             | Gateway activo; actualmente apenas `mock`.                              | `mock`                           |
+| `PAYMENT_MOCK_FAIL_PHONE`     | Telefone que simula recusa Express.                                     | `900000000`                      |
+| `PAYMENT_REFERENCE_TTL_HOURS` | Validade da referência em horas.                                        | `72`                             |
+| `PAYMENT_MULTICAIXA_ENTITY`   | Entidade de referência fictícia.                                        | `00000`                          |
+| `BANK_TRANSFER_IBAN`          | IBAN fictício para a simulação.                                         | `AO06000000000000000000000`      |
+| `BANK_TRANSFER_BANK`          | Banco fictício para a simulação.                                        | `Banco Exemplo`                  |
+| `BANK_TRANSFER_HOLDER`        | Titular fictício para a simulação.                                      | `QD Solutions (DADOS FICTÍCIOS)` |
 
 Os dados bancários e a entidade acima são fictícios e não devem ser usados em produção.
 
@@ -359,3 +445,25 @@ API_URL=http://localhost:1914 npm run smoke
 O teste verifica health check, login, catálogo, carrinho, checkout, Express, referência, confirmação
 admin, autenticação, autorização e isolamento de encomendas entre utilizadores. Pode ser executado
 repetidamente; limpa o carrinho antes de criar os fluxos de encomenda.
+## Checkout empresarial
+
+`GET /api/v1/companies/mine` devolve as empresas associadas ao utilizador,
+incluindo `id`, `name`, `nif`, `sector`, `status`, `users` e `companyRole`
+quando existe associação.
+
+`POST /api/v1/companies` requer `name`, NIF com exactamente 9 dígitos,
+`sector` opcional e `role`. O NIF é normalizado e tem restrição única na BD.
+O resultado contém a empresa e a associação criada. Um NIF de empresa de outro
+utilizador nunca cria associação automática e devolve `409`.
+
+`GET /api/v1/companies/resolve?nif=...` devolve `mine`, `exists_not_member`
+ou `not_found`. No segundo caso não devolve dados da empresa.
+
+Ao criar uma encomenda, o cliente pode enviar exactamente um `companyId`
+associado ao utilizador ou um `companySnapshot` (`name`, `nif`, `role`) para
+usar a empresa apenas nessa compra. O snapshot é guardado em `orders` e não
+cria histórico em `company`. A autorização de `companyId` é sempre validada
+no back-end.
+
+Erros estáveis: `COMPANY_ALREADY_MEMBER`, `COMPANY_EXISTS_NOT_MEMBER`,
+`COMPANY_NIF_ALREADY_EXISTS` e `ORDER_COMPANY_NOT_ALLOWED`.

@@ -19,6 +19,12 @@ router.use(authenticate);
  *     tags: [Orders]
  *     summary: Cria uma encomenda a partir do carrinho
  *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: header
+ *         name: Idempotency-Key
+ *         required: false
+ *         schema: { type: string, format: uuid }
+ *         description: Chave de idempotência para impedir duplicação da criação da encomenda.
  *     requestBody:
  *       required: true
  *       content:
@@ -26,10 +32,12 @@ router.use(authenticate);
  *           schema: { $ref: '#/components/schemas/CreateOrderInput' }
  *     responses:
  *       201: { description: Encomenda criada; o carrinho é esvaziado atomicamente. }
+ *       200: { description: Pedido repetido com a mesma Idempotency-Key; devolve a encomenda já criada. }
  *       400: { description: Carrinho vazio. }
  *       401: { description: Não autenticado. }
  *       404: { description: Endereço, entrega ou método não encontrado. }
- *       409: { description: Empresa ou produto indisponível. }
+ *       403: { description: Empresa indicada não pertence ao utilizador. }
+ *       409: { description: Empresa ou produto indisponível; ou operação repetida/em curso. }
  *       422: { description: Dados inválidos. }
  */
 router.post('/', validate({ body: createOrderSchema }), orderController.create);

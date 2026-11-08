@@ -3,6 +3,7 @@ import { asyncHandler } from '../middlewares/asyncHandler';
 import { productService } from '../services/product.service';
 import {
   CreateProductInput,
+  ProductDetailQuery,
   ListProductsQuery,
   ProductIdParam,
   UpdateProductInput,
@@ -10,7 +11,7 @@ import {
 
 const create = asyncHandler(
   async (req: Request<Record<string, string>, unknown, CreateProductInput>, res: Response) => {
-    const product = await productService.create(req.body);
+    const product = await productService.create(req.body, req.file);
 
     res.status(201).json({
       status: 'success',
@@ -41,9 +42,23 @@ const findAll = asyncHandler(async (req: Request, res: Response) => {
    * runtime, que req.query tem este formato exato (page/limit já
    * convertidos para number via z.coerce) antes desta função rodar.
    */
-  const { page, limit, categoryId, status } = req.query as unknown as ListProductsQuery;
+  const {
+    page,
+    limit,
+    categoryId,
+    status,
+    excludeId,
+    search,
+    sort,
+    priceMin,
+    priceMax,
+    availableOnly,
+  } = req.query as unknown as ListProductsQuery;
 
-  const result = await productService.findAll({ categoryId, status }, { page, limit });
+  const result = await productService.findAll(
+    { categoryId, status, excludeId, search, sort, priceMin, priceMax, availableOnly },
+    { page, limit }
+  );
 
   res.status(200).json({
     status: 'success',
@@ -53,12 +68,18 @@ const findAll = asyncHandler(async (req: Request, res: Response) => {
       limit: result.limit,
       total: result.total,
       totalPages: result.totalPages,
+      currentPage: result.page,
+      totalItems: result.total,
+      hasNextPage: result.page < result.totalPages,
     },
   });
 });
 
 const findById = asyncHandler(async (req: Request<ProductIdParam>, res: Response) => {
-  const product = await productService.findById(req.params.id);
+  const { include } = req.query as unknown as ProductDetailQuery;
+  const product = include
+    ? await productService.findByIdWithIncludes(req.params.id, include)
+    : await productService.findById(req.params.id);
 
   res.status(200).json({
     status: 'success',

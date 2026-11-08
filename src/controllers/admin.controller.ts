@@ -23,6 +23,11 @@ const listCompanies = asyncHandler(async (_req: Request, res: Response) => {
   });
 });
 
+const getDashboardSummary = asyncHandler(async (_req: Request, res: Response) => {
+  const summary = await adminService.getDashboardSummary();
+  res.status(200).json({ status: 'success', data: summary });
+});
+
 const listOrders = asyncHandler(async (req: Request, res: Response) => {
   const { page, limit, status, userId } = req.query as unknown as AdminListOrdersQuery;
   const result = await adminService.listOrders({ status, userId }, { page, limit });
@@ -75,6 +80,7 @@ const rejectPayment = asyncHandler(
 
 export const adminController = {
   listCompanies,
+  getDashboardSummary,
   listOrders,
   findOrderById,
   updateOrderStatus,

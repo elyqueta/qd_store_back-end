@@ -41,8 +41,9 @@ export abstract class AppError extends Error {
    * que o cliente possa tratá-la separadamente, se quiser.
    */
   public readonly details?: unknown;
+  public readonly code?: string;
 
-  protected constructor(message: string, statusCode: number, details?: unknown) {
+  protected constructor(message: string, statusCode: number, details?: unknown, code?: string) {
     super(message);
 
     // Necessário ao estender uma classe nativa (Error) em TypeScript
@@ -53,6 +54,7 @@ export abstract class AppError extends Error {
     this.statusCode = statusCode;
     this.isOperational = true;
     this.details = details;
+    this.code = code;
 
     // Remove o próprio construtor do stack trace registrado, para que
     // o log aponte direto para onde o erro foi de fato lançado

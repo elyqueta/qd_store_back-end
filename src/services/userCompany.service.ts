@@ -18,8 +18,18 @@ import { NotFoundError } from '../errors';
 async function associate(companyId: string, input: CreateUserCompanyInput): Promise<UserCompany> {
   await companyService.findById(companyId);
 
+  const userId =
+    input.userId ?? (input.email ? await userCompanyRepository.findUserIdByEmail(input.email) : null);
+  if (!userId) {
+    throw new NotFoundError(
+      input.email
+        ? 'Não foi encontrada uma conta com este email.'
+        : 'É necessário indicar o utilizador a associar.'
+    );
+  }
+
   return userCompanyRepository.create({
-    userId: input.userId,
+    userId,
     companyId,
     role: input.role ?? null,
   });

@@ -113,8 +113,11 @@ Todas as rotas de domínio vivem sob o prefixo **`/api/v1`**:
 |---|---|
 | Auth | `/api/v1/auth` |
 | Categorias | `/api/v1/categories` |
+| Ícones | `/api/v1/icons` |
 | Empresas | `/api/v1/companies` |
 | Admin | `/api/v1/admin` |
+| Utilizadores admin | `/api/v1/admin/users` |
+| Pedidos de orçamento admin | `/api/v1/admin/quote-requests` |
 | Localidades | `/api/v1/locations` |
 | Endereços | `/api/v1/addresses` |
 | Produtos | `/api/v1/products` |
@@ -124,6 +127,9 @@ Todas as rotas de domínio vivem sob o prefixo **`/api/v1`**:
 | Encomendas | `/api/v1/orders` |
 | Wishlist | `/api/v1/wishlist` |
 | Notificações | `/api/v1/notifications` |
+| Destaques | `/api/v1/highlights` |
+| Serviços | `/api/v1/services` |
+| Pedidos de orçamento | `/api/v1/quote-requests` |
 
 A estrutura de pastas espelha a versão:
 

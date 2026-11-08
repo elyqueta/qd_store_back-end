@@ -1,10 +1,5 @@
 import { getClient, query } from '../database/pool';
-import {
-  CreateProductData,
-  Product,
-  ProductFilters,
-  ProductRow,
-} from '../types/product.types';
+import { CreateProductData, Product, ProductFilters, ProductRow } from '../types/product.types';
 import { ProductImage } from '../types/productImage.types';
 import { PaginatedResult, PaginationParams } from '../types/pagination.types';
 import { UpdateProductInput } from '../validators/product.validator';
@@ -100,8 +95,9 @@ async function create(data: CreateProductData): Promise<Product> {
 
     if (data.mainImage) {
       await client.query(
-        `INSERT INTO product_image (id_product, url, display_order, width, height, format, size_bytes)
-         VALUES ($1, $2, 0, $3, $4, $5, $6)`,
+        `INSERT INTO product_image
+           (id_product, url, display_order, width, height, format, size_bytes, cloudinary_public_id)
+         VALUES ($1, $2, 0, $3, $4, $5, $6, $7)`,
         [
           productId,
           data.mainImage.url,
@@ -109,6 +105,7 @@ async function create(data: CreateProductData): Promise<Product> {
           data.mainImage.height ?? null,
           data.mainImage.format ?? null,
           data.mainImage.sizeBytes ?? null,
+          data.mainImage.cloudinaryPublicId ?? null,
         ]
       );
     }
@@ -154,7 +151,34 @@ function buildWhereClause(filters: ProductFilters): { clause: string; values: un
 
   if (filters.status !== undefined) {
     values.push(filters.status);
-    conditions.push(`status = $${values.length}`);
+    conditions.push(`product.status = $${values.length}`);
+  }
+
+  if (filters.availableOnly) {
+    values.push('active');
+    conditions.push(`product.status = $${values.length}`);
+  }
+
+  if (filters.excludeId !== undefined) {
+    values.push(filters.excludeId);
+    conditions.push(`product.id <> $${values.length}`);
+  }
+
+  if (filters.search !== undefined) {
+    values.push(`%${filters.search}%`);
+    conditions.push(
+      `(product.name ILIKE $${values.length} OR product.description ILIKE $${values.length})`
+    );
+  }
+
+  if (filters.priceMin !== undefined) {
+    values.push(filters.priceMin);
+    conditions.push(`product.price >= $${values.length}`);
+  }
+
+  if (filters.priceMax !== undefined) {
+    values.push(filters.priceMax);
+    conditions.push(`product.price <= $${values.length}`);
   }
 
   const clause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -188,6 +212,15 @@ async function findAll(
   const offset = (pagination.page - 1) * pagination.limit;
   const limitParamIndex = values.length + 1;
   const offsetParamIndex = values.length + 2;
+  const sortColumns = {
+    createdAt_desc: 'product.created_at DESC',
+    createdAt_asc: 'product.created_at ASC',
+    name_asc: 'product.name ASC',
+    name_desc: 'product.name DESC',
+    price_asc: 'product.price ASC',
+    price_desc: 'product.price DESC',
+  } as const;
+  const orderBy = sortColumns[filters.sort ?? 'createdAt_desc'];
 
   const dataResult = await query<ProductRow>(
     `SELECT ${PRODUCT_COLUMNS}, ${MAIN_IMAGE_COLUMNS}, category.label AS category_name
@@ -195,7 +228,7 @@ async function findAll(
      INNER JOIN category ON category.id = product.id_category
      ${MAIN_IMAGE_JOIN}
      ${clause}
-    ORDER BY product.created_at DESC
+    ORDER BY ${orderBy}, product.id ASC
      LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`,
     [...values, pagination.limit, offset]
   );
@@ -291,19 +324,53 @@ async function update(id: string, data: UpdateProductInput): Promise<Product | n
  * pedido já feito não pode "perder" o item só porque o produto foi
  * removido do catálogo depois. Por isso capturamos a violação de
  * FOREIGN KEY aqui e traduzimos para uma mensagem de negócio clara,
- * em vez de deixar vazar um 500 genérico do Postgres.
+ * em vez de deixar vazar um 500 genérico do Postgres. Os assets são
+ * enfileirados na mesma transação para permitir novas tentativas.
  */
-async function remove(id: string): Promise<boolean> {
+async function remove(id: string, cloudinaryPublicIds: string[] = []): Promise<boolean> {
+  const client = await getClient();
   try {
-    const result = await query('DELETE FROM product WHERE id = $1', [id]);
+    await client.query('BEGIN');
+    const product = await client.query<{ id: string }>(
+      'SELECT id FROM product WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (!product.rows[0]) {
+      await client.query('COMMIT');
+      return false;
+    }
+
+    await client.query(
+      `INSERT INTO cloudinary_asset_deletion (public_id)
+       SELECT cloudinary_public_id
+       FROM product_image
+       WHERE id_product = $1 AND cloudinary_public_id IS NOT NULL
+       ON CONFLICT (public_id) DO NOTHING`,
+      [id]
+    );
+
+    if (cloudinaryPublicIds.length > 0) {
+      await client.query(
+        `INSERT INTO cloudinary_asset_deletion (public_id)
+         SELECT unnest($1::text[])
+         ON CONFLICT (public_id) DO NOTHING`,
+        [cloudinaryPublicIds]
+      );
+    }
+
+    const result = await client.query('DELETE FROM product WHERE id = $1', [id]);
+    await client.query('COMMIT');
     return (result.rowCount ?? 0) > 0;
   } catch (err) {
+    await client.query('ROLLBACK');
     if (isPgError(err) && err.code === PG_FOREIGN_KEY_VIOLATION) {
       throw new ConflictError(
         'Não é possível remover este produto: existem carrinhos ou pedidos que o referenciam.'
       );
     }
     throw err;
+  } finally {
+    client.release();
   }
 }
 

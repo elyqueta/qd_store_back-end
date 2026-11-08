@@ -3,6 +3,7 @@ import { deliveryTypeController } from '../../controllers/deliveryType.controlle
 import { authenticate } from '../../middlewares/authenticate';
 import { requireAdmin } from '../../middlewares/requireAdmin';
 import { validate } from '../../middlewares/validate';
+import { publicReferenceCache } from '../../middlewares/apiCachePolicy';
 import {
   createDeliveryTypeSchema,
   deliveryTypeIdParamSchema,
@@ -79,7 +80,7 @@ router.post(
  *                   type: array
  *                   items: { $ref: '#/components/schemas/DeliveryType' }
  */
-router.get('/', deliveryTypeController.findAll);
+router.get('/', publicReferenceCache, deliveryTypeController.findAll);
 
 /**
  * @openapi
@@ -115,6 +116,7 @@ router.get('/', deliveryTypeController.findAll);
  */
 router.get(
   '/:id',
+  publicReferenceCache,
   validate({ params: deliveryTypeIdParamSchema }),
   deliveryTypeController.findById
 );

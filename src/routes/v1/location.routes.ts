@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { locationController } from '../../controllers/location.controller';
 import { validate } from '../../middlewares/validate';
+import { publicReferenceCache } from '../../middlewares/apiCachePolicy';
 import { provinceSlugParamSchema } from '../../validators/location.validator';
 
 const router = Router();
@@ -36,7 +37,7 @@ const router = Router();
  *                   type: array
  *                   items: { $ref: '#/components/schemas/ProvinceWithMunicipalities' }
  */
-router.get('/', locationController.listAll);
+router.get('/', publicReferenceCache, locationController.listAll);
 
 /**
  * @openapi
@@ -61,7 +62,7 @@ router.get('/', locationController.listAll);
  *                   type: array
  *                   items: { $ref: '#/components/schemas/Province' }
  */
-router.get('/provinces', locationController.listProvinces);
+router.get('/provinces', publicReferenceCache, locationController.listProvinces);
 
 /**
  * @openapi
@@ -98,6 +99,7 @@ router.get('/provinces', locationController.listProvinces);
  */
 router.get(
   '/provinces/:province/municipalities',
+  publicReferenceCache,
   validate({ params: provinceSlugParamSchema }),
   locationController.listMunicipalities
 );

@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import { ValidationError } from '../errors';
+import { normalizeIdempotencyKey } from '../repositories/idempotency.repository';
 import { asyncHandler } from '../middlewares/asyncHandler';
 import { orderService } from '../services/order.service';
 import { CreateOrderInput, ListOrdersQuery, OrderIdParam } from '../validators/order.validator';
@@ -7,9 +9,18 @@ function getUserId(req: Request): string {
   return req.user!.sub;
 }
 
+function getIdempotencyKey(req: Request): string | undefined {
+  const value = normalizeIdempotencyKey(req.header('Idempotency-Key'));
+  if (value && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new ValidationError('Idempotency-Key deve ser um UUID válido.');
+  }
+
+  return value;
+}
+
 const create = asyncHandler(
   async (req: Request<Record<string, string>, unknown, CreateOrderInput>, res: Response) => {
-    const order = await orderService.create(getUserId(req), req.body);
+    const order = await orderService.create(getUserId(req), req.body, getIdempotencyKey(req));
     res.status(201).json({ status: 'success', data: order });
   }
 );

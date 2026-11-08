@@ -40,10 +40,11 @@ export async function seedCompanies(userIds: Map<string, string>): Promise<Map<s
       name: company.name,
       nif: company.nif,
       sector: company.sector,
+      role: 'Proprietário',
     });
 
-    console.warn(`Empresa criada: ${created.name} (id: ${created.id})`);
-    nameToId.set(company.name, created.id);
+    console.warn(`Empresa criada: ${created.company.name} (id: ${created.company.id})`);
+    nameToId.set(company.name, created.company.id);
   }
 
   return nameToId;

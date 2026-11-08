@@ -62,6 +62,15 @@ export const orderSchemas: OpenApiSchemas = {
         properties: {
           userId: { type: 'string', format: 'uuid' },
           companyId: { type: 'string', format: 'uuid', nullable: true },
+          companySnapshot: {
+            nullable: true,
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              nif: { type: 'string', pattern: '^[0-9]{9}$' },
+              role: { type: 'string' },
+            },
+          },
           paymentMethodId: { type: 'string', format: 'uuid' },
           deliveryTypeId: { type: 'string', format: 'uuid' },
           deliveryPrice: { type: 'number' },
@@ -98,6 +107,15 @@ export const orderSchemas: OpenApiSchemas = {
       paymentMethodId: { type: 'string', format: 'uuid' },
       addressId: { type: 'string', format: 'uuid' },
       companyId: { type: 'string', format: 'uuid' },
+      companySnapshot: {
+        type: 'object',
+        required: ['name', 'nif', 'role'],
+        properties: {
+          name: { type: 'string', maxLength: 200 },
+          nif: { type: 'string', pattern: '^[0-9]{9}$' },
+          role: { type: 'string', maxLength: 100 },
+        },
+      },
       notes: { type: 'string', maxLength: 1000 },
     },
   },

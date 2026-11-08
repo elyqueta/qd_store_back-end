@@ -9,11 +9,13 @@ import { asyncHandler } from './middlewares/asyncHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
 import { errorHandler } from './middlewares/errorHandler';
 import { apiLimiter } from './middlewares/rateLimiter';
+import { privateNoStore } from './middlewares/apiCachePolicy';
 import v1Routes from './routes/v1';
 
 const app: Application = express();
 
 app.set('trust proxy', env.TRUST_PROXY);
+app.set('etag', 'weak');
 
 app.use(
   helmet({
@@ -26,8 +28,13 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// O limitador protege as rotas versionadas e deixa /health disponível para os health checks.
-app.use('/api/v1', apiLimiter);
+// O limitador protege as rotas versionadas em produção e deixa /health
+// disponível para os health checks. Em desenvolvimento fica desativado
+// para permitir testes repetidos do front-end sem bloqueios artificiais.
+app.use('/api/v1', privateNoStore);
+if (env.NODE_ENV === 'production') {
+  app.use('/api/v1', apiLimiter);
+}
 
 /**
  * Documentação interativa, disponível SOMENTE fora de produção.

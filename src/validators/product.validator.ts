@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { createMainProductImageSchema } from './productImage.validator';
 
 const nameSchema = z
   .string({ error: 'name é obrigatório e deve ser texto.' })
@@ -20,13 +19,19 @@ const badgeSchema = z.string().trim().max(50, 'badge deve ter no máximo 50 cara
  * Validar aqui evita que um erro de digitação (ex: esquecer um dígito)
  * chegue a ser persistido.
  */
-const priceSchema = z
-  .number({ error: 'price é obrigatório e deve ser um número.' })
-  .positive('price deve ser maior que zero.');
+const numberLikeSchema = (fieldName: string) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value === 'string' && value.trim() !== '' && /^\d+(?:\.\d+)?$/.test(value)) {
+        return Number(value);
+      }
+      return value;
+    },
+    z.number({ error: `${fieldName} deve ser um número.` }).positive(`${fieldName} deve ser maior que zero.`)
+  );
 
-const originalPriceSchema = z
-  .number({ error: 'originalPrice deve ser um número.' })
-  .positive('originalPrice deve ser maior que zero.');
+const priceSchema = numberLikeSchema('price');
+const originalPriceSchema = numberLikeSchema('originalPrice');
 
 const categoryIdSchema = z.uuid('categoryId deve ser um UUID válido.');
 
@@ -65,7 +70,6 @@ export const createProductSchema = z
     price: priceSchema,
     originalPrice: originalPriceSchema.optional(),
     badge: badgeSchema.optional(),
-    mainImage: createMainProductImageSchema.optional(),
   })
   .strict()
   .superRefine(validatePriceConsistency);
@@ -114,14 +118,76 @@ export const productIdParamSchema = z.object({
  * chegam como string ("?page=2"), nunca como number nativo — mesma
  * técnica já usada em config/env.ts para PORT e RATE_LIMIT_MAX.
  */
-export const listProductsQuerySchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100, 'limit máximo é 100.').default(20),
-  categoryId: z.uuid('categoryId deve ser um UUID válido.').optional(),
-  status: z.enum(['active', 'inactive', 'out_of_stock']).optional(),
+export const listProductsQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(100, 'limit máximo é 100.').default(20),
+    categoryId: z.uuid('categoryId deve ser um UUID válido.').optional(),
+    status: z.enum(['active', 'inactive', 'out_of_stock']).optional(),
+    excludeId: z.uuid('excludeId deve ser um UUID válido.').optional(),
+    search: z.string().trim().min(1).max(200).optional(),
+    sort: z
+      .enum([
+        'createdAt_desc',
+        'createdAt_asc',
+        'name_asc',
+        'name_desc',
+        'price_asc',
+        'price_desc',
+      ])
+      .default('createdAt_desc'),
+    priceMin: z.coerce.number().nonnegative().optional(),
+    priceMax: z.coerce.number().nonnegative().optional(),
+    availableOnly: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true')
+      .optional(),
+  })
+  .strict()
+  .superRefine((query, ctx) => {
+    if (query.priceMin !== undefined && query.priceMax !== undefined && query.priceMin > query.priceMax) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['priceMax'],
+        message: 'priceMax deve ser maior ou igual a priceMin.',
+      });
+    }
+
+    if (query.availableOnly && query.status !== undefined && query.status !== 'active') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['status'],
+        message: 'availableOnly=true não pode ser combinado com status diferente de active.',
+      });
+    }
+  });
+
+const productDetailIncludeSchema = z.string().transform((value, ctx) => {
+  const includes = value.split(',');
+  const allowedIncludes = new Set(['images', 'specifications']);
+
+  if (
+    includes.some((include) => !allowedIncludes.has(include)) ||
+    new Set(includes).size !== includes.length
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'include deve conter images e/ou specifications, sem duplicados.',
+    });
+    return z.NEVER;
+  }
+
+  return includes as Array<'images' | 'specifications'>;
 });
+
+export const productDetailQuerySchema = z
+  .object({
+    include: productDetailIncludeSchema.optional(),
+  })
+  .strict();
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type ProductIdParam = z.infer<typeof productIdParamSchema>;
 export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;
+export type ProductDetailQuery = z.infer<typeof productDetailQuerySchema>;

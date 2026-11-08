@@ -3,6 +3,7 @@ import { paymentMethodController } from '../../controllers/paymentMethod.control
 import { authenticate } from '../../middlewares/authenticate';
 import { requireAdmin } from '../../middlewares/requireAdmin';
 import { validate } from '../../middlewares/validate';
+import { publicReferenceCache } from '../../middlewares/apiCachePolicy';
 import {
   createPaymentMethodSchema,
   paymentMethodIdParamSchema,
@@ -79,7 +80,7 @@ router.post(
  *                   type: array
  *                   items: { $ref: '#/components/schemas/PaymentMethod' }
  */
-router.get('/', paymentMethodController.findAll);
+router.get('/', publicReferenceCache, paymentMethodController.findAll);
 
 /**
  * @openapi
@@ -115,6 +116,7 @@ router.get('/', paymentMethodController.findAll);
  */
 router.get(
   '/:id',
+  publicReferenceCache,
   validate({ params: paymentMethodIdParamSchema }),
   paymentMethodController.findById
 );
